@@ -14,7 +14,7 @@ from pdf_generator import generate_executive_pdf
 from outlook_helper import open_outlook_with_report
 
 st.set_page_config(
-    page_title="Delta Air Lines (DAL) – Institutional Equity & Treasury Dashboard",
+    page_title="Delta Air Lines (DAL) – Risk Mapping & Hedging Dashboard",
     page_icon="✈️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -80,7 +80,7 @@ dcf_results = run_dcf_model(
 
 st.markdown(f"<div class='main-header'>✈️ {info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)</div>", unsafe_allow_html=True)
 st.markdown(
-    f"<div class='sub-header'>Full Equity Research, Financial Analytics, DCF Valuation & Hedging Strategy Dashboard (Excl. 2021) | "
+    f"<div class='sub-header'>Corporate Risk Mapping, Underlyings Profiling & Treasury Hedging Design Dashboard (Excl. 2021) | "
     f"Last Updated: {raw_data['fetched_at']}</div>",
     unsafe_allow_html=True,
 )
@@ -99,17 +99,16 @@ k6.metric(
 
 st.markdown("---")
 
-# 3 TABS: Overview & Financials | Hedging Strategy (Fuel & FX) | DCF & Client Export
 tab1, tab2, tab3 = st.tabs(
     [
         "📊 Tab 1: Company Overview & Financials (Excl. 2021)",
-        "🛡️ Tab 2: Hedging Strategy (Fuel, FX, Collars & Lufthansa Case Study)",
+        "🛡️ Tab 2: Corporate Risk Mapping & Hedging Scheme Design",
         "🎯 Tab 3: DCF Valuation, Multiples & Client Export",
     ]
 )
 
 # =============================================================================
-# TAB 1: OVERVIEW & FINANCIALS
+# TAB 1: COMPANY OVERVIEW & FINANCIALS
 # =============================================================================
 with tab1:
     st.subheader("1. Company Overview & Market Positioning")
@@ -152,12 +151,7 @@ with tab1:
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#003366"))
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name="EBITDA ($B)", marker_color="#3B82F6"))
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name="Free Cash Flow ($B)", marker_color="#10B981"))
-            fig_rev.update_layout(
-                title="Revenue, EBITDA & Free Cash Flow ($B)",
-                barmode="group",
-                height=360,
-                margin=dict(l=10, r=10, t=40, b=10),
-            )
+            fig_rev.update_layout(title="Revenue, EBITDA & Free Cash Flow ($B)", barmode="group", height=360, margin=dict(l=10, r=10, t=40, b=10))
             st.plotly_chart(fig_rev, use_container_width=True)
 
         with c_fin2:
@@ -189,48 +183,78 @@ with tab1:
 
 
 # =============================================================================
-# TAB 2: HEDGING STRATEGY (FUEL, FX, COLLARS & LUFTHANSA CASE STUDY)
+# TAB 2: CORPORATE RISK MAPPING & HEDGING SCHEME DESIGN (LUFTHANSA CASE STUDY STYLE)
 # =============================================================================
 with tab2:
-    st.subheader("🛡️ Comprehensive Treasury Hedging Strategy: Fuel & Foreign Exchange (FX)")
+    st.subheader("🛡️ Corporate Risk Mapping & Treasury Hedging Scheme Design")
     st.markdown(
-        "Airlines face two major exogenous volatility vectors: **Jet Fuel / Crude Oil input costs** and **Foreign Exchange (FX) currency exposure** from international ticket sales and operational cash flows. Below is the current corporate hedging architecture and recommended derivative implementation."
+        "Following the institutional risk-mapping framework (analogous to Lufthansa Group's risk architecture[cite: 7, 8]), "
+        "exposures are categorized by probability and EBIT damage. Financial risks (Fuel and FX) are quantifiable and hedgeable via "
+        "derivatives, whereas interest-rate risk is managed through a balanced net-fix structure[cite: 7, 8]."
     )
 
-    h_col1, h_col2 = st.columns(2)
+    # Risk Mapping Matrix Summary Table
+    st.markdown("#### 1. Top-Risk Matrix & Exposure Classification")
+    risk_matrix_data = [
+        ["Risk Category", "Specific Risk Factor", "Probability", "EBIT Damage / Impact", "Mitigation & Hedging Instrument"],
+        ["Financial / Market", "Fuel Prices (Crude/Kerosene)", "High (≥30%)", "Critical (≥€650m)", "12-Month Zero-Cost Collar (Long Call, Short Put)[cite: 7, 16]"],
+        ["Financial / Market", "Exchange Rate (USD Focus)", "High (≥30%)", "Substantial (€325-650m)", "1-year EUR/USD Plain-Vanilla Forwards (80% ratio)[cite: 7, 15]"],
+        ["Financial / Market", "Interest Rate Risk", "Low (<20%)", "Moderate (€162.5-325m)", "Net-Fix Strategy (Balancing floating assets & liabilities)[cite: 7, 8]"],
+        ["Operational", "Labor Disputes / Strikes", "High (≥30%)", "Substantial (€325-650m)", "Process controls & labor negotiations (Unhedgable via fin. instruments)[cite: 7, 12]"],
+        ["ESG / Regulatory", "Carbon Pricing (EU ETS / SAF)", "High (≥30%)", "Moderate (€162.5-325m)", "Transition programs & SAF blending (Credit/ESG adjustment)[cite: 7, 12]"],
+    ]
+    st.table(pd.DataFrame(risk_matrix_data[1:], columns=risk_matrix_data[0]))
 
-    with h_col1:
-        st.markdown("#### 🛢️ 1. Jet Fuel & Crude Oil Hedging Analysis")
+    st.markdown("---")
+    st.subheader("2. Interest Rate Risk Hedging Strategy (Net-Fix Approach)")
+    i_col1, i_col2 = st.columns(2)
+    with i_col1:
         st.markdown(
             """
-            - **Current Delta Approach (Monroe Energy Refinery):** Rather than relying purely on paper futures or swaps, Delta uniquely owns the Trainer, PA refinery through its Monroe Energy subsidiary. This creates a physical structural hedge against refining crack-spread spikes (gasoline/diesel vs. crude).
-            - **The Gap:** While Monroe captures refining margins during high-demand shocks, Delta remains exposed to underlying WTI/Brent crude price surges and unhedged prompt jet fuel spot volatility.
-            - **Proposed Addition: Crude & Jet Fuel Collar Structures (Buy Call, Sell Put)**
-              - **Structure Mechanics:** Delta buys out-of-the-money (OTM) call options on WTI/Brent/Jet Fuel to cap maximum fuel price spikes, and simultaneously finances the premium by selling OTM put options (establishing a price floor).
-              - **Is it Zero Cost?** Yes, a collar can be structured as **zero-cost** (or even net-credit) when the premium collected from selling the put equals the premium paid for buying the call.
-              - **What happens below the put strike?** Below the put strike, Delta loses downside price protection. If crude prices drop beneath the put floor, Delta is obligated to buy fuel at market prices while absorbing losses or purchasing obligations from the short put. To mitigate this, Delta sets the put strike sufficiently below current spot (e.g., 20–25% OTM) to participate in falling fuel prices while protecting against catastrophic upside spikes.
+            - **Net-Fix Strategy Mechanics:** Lufthansa and major network carriers maintain a balanced structure between floating-rate assets and liabilities to neutralize short-term interest rate sensitivity[cite: 8].
+            - **Post-Hedge Stability:** Long-term debt is issued at fixed rates or converted via cross-currency interest rate swaps (pay-fixed / receive-floating)[cite: 8].
+            - **Minimal P&L Impact:** After hedging, a $\pm 100\text{ bps}$ interest rate shift impacts net income by only $\approx \pm \text{€26m}$, rendering interest rate risk immaterial[cite: 8].
             """
         )
-
-    with h_col2:
-        st.markdown("#### 💱 2. Foreign Exchange (FX) Hedging Analysis")
+    with i_col2:
         st.markdown(
             """
-            - **Current Exposure:** Delta generates significant revenues in non-USD currencies (EUR, GBP, JPY, CAD, MXN) while paying USD-denominated fixed costs (aircraft financing, domestic labor). Conversely, international carriers like Lufthansa face EUR-denominated base costs against global multi-currency inflows.
-            - **Current Delta Approach:** Rolling 12-to-24-month FX forward contracts and zero-cost options to smooth out currency volatility.
-            - **Proposed Treasury Implementation:**
-              - **Layered FX Forwards:** Lock in forward rates across staggered monthly maturities for 60-75% of projected Euro and Pound ticket receipts.
-              - **Participating Forward Collars:** Protect operating margins against severe USD strengthening or weakening while retaining upside currency participation.
+            - **Floating Assets vs. Liabilities:** Short-term money market securities and cash equivalents provide natural offsets to floating borrowings[cite: 8].
+            - **Strategic Liquidity Buffer:** A controlled positive difference between floating assets and post-hedge floating debt accounts for timing differences and liquidity reserves[cite: 8].
             """
         )
 
     st.markdown("---")
-    st.subheader("✈️ Case Study: How Deutsche Lufthansa AG Deploys Derivative Collars")
+    st.subheader("3. Underlyings Distributional & Tail-Risk Analysis (FX vs. Crude Oil)")
+    u_col1, u_col2 = st.columns(2)
+    with u_col1:
+        st.markdown("#### 💱 EUR / USD Exchange Rate Profile")
+        st.markdown(
+            """
+            - **Behavior:** Near-normal distribution with low volatility ($\sim 7.19\%$) and near-symmetric returns[cite: 11, 14].
+            - **Valuation / Instrument:** Priced via Interest Rate Parity ($F = S_0 \cdot e^{(r_f - r_d)T}$ with zero premium)[cite: 14].
+            - **Hedge Implementation:** 1-year plain-vanilla EUR/USD forwards covering **80% of net exposure**[cite: 15].
+            - **Simulation Outcome:** Reduces cash flow volatility by **80%** (from €622m to €124m) and 95% VaR by **93%** (from €912m to €66m)[cite: 15, 16].
+            """
+        )
+    with u_col2:
+        st.markdown("#### 🛢️ Crude Oil / Fuel Price Profile")
+        st.markdown(
+            """
+            - **Behavior:** Extreme positive skewness ($1.83$) and heavy kurtosis ($17.47$), reflecting severe tail risk and energy shocks[cite: 11]. Annualized volatility $\sim 44.44\%$[cite: 11].
+            - **Valuation / Instrument:** Black-Scholes option pricing[cite: 14]. A **12-month zero-cost collar** (buying OTM call, selling OTM put) is chosen over a long call to avoid high upfront premium outlays while capping extreme cost spikes[cite: 14, 16].
+            - **Hedge Implementation:** Applied to **70% of annual fuel requirements**[cite: 16].
+            - **Simulation Outcome:** Reduces fuel cost volatility by **60%** (from €2,617m to €1,057m) and 95% VaR by **30%** (from €11,449m to €7,999m)[cite: 16].
+            """
+        )
+
+    st.markdown("---")
+    st.subheader("4. Strategic Treasury Takeaways for Client Meeting Prep")
     st.markdown(
         """
-        - **Lufthansa's Approach:** Unlike Delta's physical refinery model, the Lufthansa Group extensively utilizes derivative options and option combinations (such as multi-layer collars and call spreads) to hedge fuel price exposure.
-        - **Execution Mechanics:** Lufthansa typically layers option structures across a 24-month horizon, buying call options to establish ceiling protection against geopolitical oil shocks while selling put options to fund the premiums (zero-cost collar design).
-        - **Risk Mitigation & Flexibility:** By employing collars rather than outright futures or swaps, Lufthansa avoids cash-drain margin calls during sudden price drops (participating in lower fuel costs down to the put strike) while shielding operating profit margins when crude oil surges.
+        - **Combined Hedging Effectiveness:** Implementing 80% FX forwards and a 70% fuel collar effectively neutralizes earnings variance under macroeconomic and geopolitical stress[cite: 4].
+        - **Asymmetric Protection:** The zero-cost collar protects against severe energy spikes while retaining downside participation up to the put strike floor[cite: 16].
+        - **Stakeholder Confidence:** Aligns Delta with top-tier airline industry standards (hedge ratios between 70% and 90%), stabilizing earnings and supporting an investment-grade credit profile[cite: 15].
         """
     )
 
@@ -295,19 +319,19 @@ with tab3:
         fig_fcf.update_layout(height=270, margin=dict(l=10, r=10, t=35, b=10))
         st.plotly_chart(fig_fcf, use_container_width=True)
 
-    st.subheader("3. Actionable Hedging & Treasury Advisory Recommendations")
+    st.subheader("3. Actionable Treasury Recommendations")
     hedging_recs = [
         {
-            "title": "Zero-Cost Crude & Jet Fuel Collars",
+            "title": "12-Month Zero-Cost Crude & Jet Fuel Collars (70% Ratio)",
             "detail": "Implement zero-cost collars (buying OTM call options funded by selling OTM put options) to cap jet fuel spikes while preserving downside participation up to the put floor.",
         },
         {
-            "title": "Layered FX Cash Flow Hedging (EUR, GBP, JPY)",
-            "detail": "Establish staggered 18-month FX forward contracts and participating collars on 60–75% of forecasted international ticket inflows.",
+            "title": "1-Year EUR/USD Plain-Vanilla Forwards (80% Ratio)",
+            "detail": "Establish staggered 12-month FX forward contracts covering 80% of forecasted international operational exposures to suppress linear FX volatility.",
         },
         {
-            "title": "Pre-Issuance Rate Locks & Fleet CapEx Financing",
-            "detail": "Deploy forward-starting interest rate swaps and Treasury locks ahead of upcoming EETC aircraft financing to mitigate rate volatility.",
+            "title": "Net-Fix Interest Rate Management",
+            "detail": "Maintain balanced floating assets and liabilities via cross-currency interest rate swaps to ensure rate shifts impact net income by no more than ±€26m.",
         },
     ]
 
@@ -346,7 +370,7 @@ with tab3:
                 f"- Revenue: ${latest_fin['Revenue ($B)']:.2f}B | EBITDA: ${latest_fin['EBITDA ($B)']:.2f}B | "
                 f"FCF: ${latest_fin['Free Cash Flow ($B)']:.2f}B\n"
                 f"- Net Debt / EBITDA: {latest_fin['Net Debt / EBITDA (x)']:.2f}x | EV/EBITDA: {multiples['EV / EBITDA (x)']}x\n"
-                f"- Key Pitch Angles: Zero-Cost Fuel Collars, Transatlantic FX Hedging & Lufthansa Collar Benchmarking"
+                f"- Key Pitch Angles: Risk Mapping Matrix, Net-Fix Interest Rate Model, 80% FX Forwards & 70% Fuel Collars"
             )
             success, msg = open_outlook_with_report(
                 pdf_bytes=pdf_bytes,

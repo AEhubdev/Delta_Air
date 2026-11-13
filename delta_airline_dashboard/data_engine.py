@@ -85,7 +85,7 @@ def extract_financial_summary(data: dict) -> pd.DataFrame:
         }
     )
 
-    # Exclude 2021 data per user instructions
+    # Exclude 2021 per instructions
     df = df[df["Year"] != "2021"].reset_index(drop=True)
 
     df["Operating Margin (%)"] = np.where(df["Revenue ($B)"] > 0, (df["EBIT ($B)"] / df["Revenue ($B)"]) * 100, 0)

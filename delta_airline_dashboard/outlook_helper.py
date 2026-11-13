@@ -20,11 +20,11 @@ def open_outlook_with_report(
     with open(file_path, "wb") as f:
         f.write(pdf_bytes)
 
-    subject = f"Client Meeting Prep: {company_name} – Financial, DCF & Hedging Briefing"
+    subject = f"Client Meeting Prep: {company_name} – Financial, Risk & Hedging Briefing"
     body = (
         f"Hi Team,\n\n"
         f"Ahead of our upcoming client meeting with {company_name}, please find attached the "
-        f"latest financial analysis, DCF valuation summary, and treasury hedging advisory briefing.\n\n"
+        f"latest financial analysis, DCF valuation summary, and corporate hedging strategy briefing.\n\n"
         f"Key Highlights:\n"
         f"{summary_highlights}\n\n"
         f"Please review the attached PDF prior to our call.\n\n"
@@ -53,10 +53,7 @@ def open_outlook_with_report(
                 f"&body={urllib.parse.quote(body)}"
             )
             webbrowser.open(mailto_url)
-            return False, (
-                f"Outlook COM unavailable ({e}). Opened default email client via mailto. "
-                f"Please manually attach the saved report from: {file_path}"
-            )
+            return False, f"Outlook COM unavailable ({e}). Opened default email client via mailto. Saved report at: {file_path}"
 
     mailto_url = (
         f"mailto:{urllib.parse.quote(recipient)}"
@@ -64,7 +61,4 @@ def open_outlook_with_report(
         f"&body={urllib.parse.quote(body)}"
     )
     webbrowser.open(mailto_url)
-    return False, (
-        f"Opened default email client. Due to OS sandboxing on non-Windows systems, "
-        f"please attach the generated report saved at: {file_path}"
-    )
+    return False, f"Opened default email client. Saved report at: {file_path}"

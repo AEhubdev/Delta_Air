@@ -39,61 +39,21 @@ def generate_executive_pdf(
     dark_text = colors.HexColor("#1E293B")
     muted_text = colors.HexColor("#64748B")
 
-    title_style = ParagraphStyle(
-        "ReportTitle",
-        parent=styles["Heading1"],
-        fontSize=18,
-        leading=22,
-        textColor=navy,
-        spaceAfter=4,
-    )
-    subtitle_style = ParagraphStyle(
-        "ReportSubtitle",
-        parent=styles["Normal"],
-        fontSize=9.5,
-        textColor=muted_text,
-        spaceAfter=10,
-    )
-    h2_style = ParagraphStyle(
-        "SectionHeader",
-        parent=styles["Heading2"],
-        fontSize=12,
-        leading=15,
-        textColor=navy,
-        spaceBefore=12,
-        spaceAfter=6,
-    )
-    body_style = ParagraphStyle(
-        "BodyTextCustom",
-        parent=styles["Normal"],
-        fontSize=9.2,
-        leading=13.5,
-        textColor=dark_text,
-        spaceAfter=6,
-    )
-    bullet_style = ParagraphStyle(
-        "BulletCustom",
-        parent=body_style,
-        leftIndent=12,
-        bulletIndent=4,
-        spaceAfter=4,
-    )
+    title_style = ParagraphStyle("ReportTitle", parent=styles["Heading1"], fontSize=18, leading=22, textColor=navy, spaceAfter=4)
+    subtitle_style = ParagraphStyle("ReportSubtitle", parent=styles["Normal"], fontSize=9.5, textColor=muted_text, spaceAfter=10)
+    h2_style = ParagraphStyle("SectionHeader", parent=styles["Heading2"], fontSize=12, leading=15, textColor=navy, spaceBefore=12, spaceAfter=6)
+    body_style = ParagraphStyle("BodyTextCustom", parent=styles["Normal"], fontSize=9.2, leading=13.5, textColor=dark_text, spaceAfter=6)
+    bullet_style = ParagraphStyle("BulletCustom", parent=body_style, leftIndent=12, bulletIndent=4, spaceAfter=4)
 
     elements = []
     info = data["info"]
 
-    elements.append(Paragraph("CLIENT BRIEFING & EQUITY RESEARCH REPORT", subtitle_style))
+    elements.append(Paragraph("CORPORATE RISK MAPPING & HEDGING DESIGN BRIEFING", subtitle_style))
     elements.append(Paragraph(f"{info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)", title_style))
-    elements.append(
-        Paragraph(
-            f"Sector: {info.get('sector', 'Industrials')} | Industry: {info.get('industry', 'Airlines')} | "
-            f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}",
-            subtitle_style,
-        )
-    )
+    elements.append(Paragraph(f"Sector: {info.get('sector', 'Industrials')} | Industry: {info.get('industry', 'Airlines')} | Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}", subtitle_style))
     elements.append(HRFlowable(width="100%", thickness=1.5, color=crimson, spaceAfter=10))
 
-    elements.append(Paragraph("1. Executive Performance & Sales Briefing Summary", h2_style))
+    elements.append(Paragraph("1. Executive Performance & Risk Summary", h2_style))
     elements.append(Paragraph(executive_summary, body_style))
 
     elements.append(Paragraph("2. Market Multiples & DCF Valuation Summary", h2_style))
@@ -105,27 +65,21 @@ def generate_executive_pdf(
         ["Current Share Price", f"${multiples['Current Share Price ($)']:.2f}", "Implied Share Price (DCF)", f"${bridge['Implied Share Price ($)']:.2f}"],
         ["Market Capitalization", f"${multiples['Market Cap ($B)']:.2f}B", "Implied Upside / Downside", f"{bridge['Implied Upside / Downside (%)']:+.2f}%"],
         ["Enterprise Value (EV)", f"${multiples['Enterprise Value ($B)']:.2f}B", "Implied Enterprise Value", f"${bridge['Implied Enterprise Value ($B)']:.2f}B"],
-        ["Trailing P/E / Forward P/E", f"{multiples['Trailing P/E (x)']}x / {multiples['Forward P/E (x)']}x", "Calculated WACC", f"{wacc_info['Calculated WACC (%)']:.2f}%"],
+        ["Trailing / Forward P/E", f"{multiples['Trailing P/E (x)']}x / {multiples['Forward P/E (x)']}x", "Calculated WACC", f"{wacc_info['Calculated WACC (%)']:.2f}%"],
         ["EV / EBITDA", f"{multiples['EV / EBITDA (x)']}x", "Terminal Growth Rate", f"{wacc_info['Terminal Growth Rate (%)']:.2f}%"],
         ["FCF Yield / Beta", f"{multiples['FCF Yield (%)']}% / {multiples['Beta (5Y Monthly)']}", "Net Debt ($B)", f"${fin_df.iloc[-1]['Net Debt ($B)']:.2f}B"],
     ]
 
     val_table = Table(val_table_data, colWidths=[52 * mm, 36 * mm, 54 * mm, 36 * mm])
-    val_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), navy),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, slate]),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
-                ("PADDING", (0, 0), (-1, -1), 5),
-                ("FONTNAME", (1, 1), (1, -1), "Helvetica-Bold"),
-                ("FONTNAME", (3, 1), (3, -1), "Helvetica-Bold"),
-            ]
-        )
-    )
+    val_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), navy),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, slate]),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+        ("PADDING", (0, 0), (-1, -1), 5),
+    ]))
     elements.append(val_table)
     elements.append(Spacer(1, 8))
 
@@ -143,40 +97,30 @@ def generate_executive_pdf(
         ]
         hist_rows = [hist_headers]
         for label, col_name in metrics_to_show:
-            row = [label] + [f"{val:.2f}" for val in fin_df[col_name]]
-            hist_rows.append(row)
+            hist_rows.append([label] + [f"{val:.2f}" for val in fin_df[col_name]])
 
         col_w = [58 * mm] + [(120 / len(fin_df)) * mm] * len(fin_df)
         hist_table = Table(hist_rows, colWidths=col_w)
-        hist_table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), navy),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, slate]),
-                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
-                    ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-                    ("PADDING", (0, 0), (-1, -1), 5),
-                ]
-            )
-        )
+        hist_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), navy),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, slate]),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+            ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+            ("PADDING", (0, 0), (-1, -1), 5),
+        ]))
         elements.append(hist_table)
         elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph("4. Hedging Strategy & Treasury Risk Management Recommendations", h2_style))
+    elements.append(Paragraph("4. Treasury Hedging Scheme Design & Recommendations", h2_style))
     for rec in hedging_recommendations:
         elements.append(Paragraph(f"• <b>{rec['title']}:</b> {rec['detail']}", bullet_style))
 
     elements.append(Spacer(1, 10))
     elements.append(HRFlowable(width="100%", thickness=0.6, color=muted_text, spaceAfter=4))
-    elements.append(
-        Paragraph(
-            "Confidential – Prepared for Corporate & Transaction Banking Sales Meeting Preparation. Data sourced via Yahoo Finance.",
-            subtitle_style,
-        )
-    )
+    elements.append(Paragraph("Confidential – Prepared for Corporate & Transaction Banking Sales Meeting Preparation.", subtitle_style))
 
     doc.build(elements)
     return buffer.getvalue()
