@@ -20,84 +20,111 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# CGI Signature Gradient Palette:
-# CGI Red (#E31937) -> CGI Magenta (#9B185A) -> CGI Violet/Purple (#5236AB)
+# Robust High-Contrast CGI Styling (Eliminating white-on-white and black-on-black table issues)
 st.markdown(
     """
     <style>
     /* Global App Background & Typography */
     .stApp {
-        background-color: #F7F7FA;
-        color: #1C1C1C;
+        background-color: #F8F9FA !important;
+        color: #1A1A1A !important;
+    }
+
+    /* Force all standard markdown text and paragraphs to be clearly visible */
+    p, span, label, .stMarkdown, li, .streamlit-expanderHeader {
+        color: #1A1A1A !important;
+    }
+
+    /* Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #2A1B4E !important;
     }
 
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #FFFFFF 0%, #F4F1F8 100%);
-        border-right: 2px solid #E5E0EC;
+        background: #FFFFFF !important;
+        border-right: 1px solid #E2E8F0;
+    }
+    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] label, 
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: #1A1A1A !important;
     }
 
     /* Top CGI Gradient Banner */
     .cgi-banner {
         background: linear-gradient(135deg, #E31937 0%, #9B185A 52%, #5236AB 100%);
-        padding: 22px 28px;
-        border-radius: 12px;
-        color: #FFFFFF;
-        margin-bottom: 1.2rem;
+        padding: 24px 30px;
+        border-radius: 10px;
+        color: #FFFFFF !important;
+        margin-bottom: 1.5rem;
         box-shadow: 0 6px 18px rgba(82, 54, 171, 0.18);
     }
     .cgi-banner-title {
-        font-size: 2.0rem;
+        font-size: 2.1rem;
         font-weight: 700;
-        color: #FFFFFF;
-        margin: 0 0 4px 0;
+        color: #FFFFFF !important;
+        margin: 0 0 6px 0;
         letter-spacing: -0.3px;
     }
     .cgi-banner-sub {
-        font-size: 0.95rem;
-        color: rgba(255, 255, 255, 0.9);
+        font-size: 0.98rem;
+        color: rgba(255, 255, 255, 0.92) !important;
         margin: 0;
     }
 
-    /* CGI Gradient Accent Card */
+    /* CGI Accent Card */
     .cgi-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E6E2EE;
-        border-top: 4px solid transparent;
-        border-image: linear-gradient(90deg, #E31937 0%, #9B185A 50%, #5236AB 100%) 1;
-        padding: 16px 18px;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0;
+        border-top: 4px solid #E31937;
+        padding: 18px;
         border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(28, 28, 28, 0.04);
-        color: #1C1C1C;
-        line-height: 1.6;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        color: #1A1A1A !important;
+    }
+    .cgi-card b, .cgi-card h4 {
+        color: #1A1A1A !important;
     }
 
     /* Metric Cards Styling */
     div[data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        border: 1px solid #E6E2EE;
-        border-left: 4px solid #E31937;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-left: 4px solid #E31937 !important;
         padding: 12px 14px;
         border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(82, 54, 171, 0.05);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
     div[data-testid="stMetricLabel"] {
-        color: #555566 !important;
-        font-weight: 600;
+        color: #64748B !important;
+        font-weight: 600 !important;
     }
     div[data-testid="stMetricValue"] {
-        color: #1C1C1C !important;
+        color: #1A1A1A !important;
+        font-weight: 700 !important;
     }
 
-    /* Section Headers with Subtle Gradient Underline */
-    h2, h3 {
-        color: #2A1B4E !important;
+    /* Dataframes and Tables Contrast Fix */
+    div[data-testid="stDataFrame"], table {
+        background-color: #FFFFFF !important;
+        color: #1A1A1A !important;
+    }
+    th {
+        background-color: #5236AB !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+    td {
+        color: #1A1A1A !important;
+        background-color: #FFFFFF !important;
     }
 
     /* Tabs Styling */
     button[data-baseweb="tab"] {
         font-weight: 600 !important;
-        color: #4A4A5A !important;
+        color: #4A5568 !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #E31937 !important;
@@ -111,22 +138,24 @@ st.markdown(
         border: none !important;
         border-radius: 6px !important;
         font-weight: 600 !important;
-        padding: 0.55rem 1rem !important;
-        transition: all 0.25s ease !important;
+        padding: 0.6rem 1.2rem !important;
         box-shadow: 0 3px 10px rgba(227, 25, 55, 0.22) !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
         background: linear-gradient(90deg, #C8142F 0%, #83124B 55%, #41298F 100%) !important;
-        transform: translateY(-1px);
+        color: #FFFFFF !important;
         box-shadow: 0 5px 14px rgba(82, 54, 171, 0.30) !important;
     }
 
-    /* Info Box Accent */
+    /* Info Box Styling */
     div[data-testid="stAlert"] {
-        background-color: #FFFFFF;
-        border: 1px solid #E2D9F3;
-        border-left: 5px solid #5236AB;
-        color: #1C1C1C;
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2D9F3 !important;
+        border-left: 5px solid #5236AB !important;
+        color: #1A1A1A !important;
+    }
+    div[data-testid="stAlert"] p {
+        color: #1A1A1A !important;
     }
     </style>
     """,
@@ -268,6 +297,7 @@ with tab1:
             legend_title_text="",
             plot_bgcolor="#FFFFFF",
             paper_bgcolor="#FFFFFF",
+            font=dict(color="#1A1A1A"),
         )
         st.plotly_chart(fig_bench, use_container_width=True)
 
@@ -287,6 +317,7 @@ with tab1:
                 margin=dict(l=10, r=10, t=40, b=10),
                 plot_bgcolor="#FFFFFF",
                 paper_bgcolor="#FFFFFF",
+                font=dict(color="#1A1A1A"),
             )
             st.plotly_chart(fig_rev, use_container_width=True)
 
@@ -313,6 +344,7 @@ with tab1:
                 margin=dict(l=10, r=10, t=40, b=10),
                 plot_bgcolor="#FFFFFF",
                 paper_bgcolor="#FFFFFF",
+                font=dict(color="#1A1A1A"),
             )
             st.plotly_chart(fig_debt, use_container_width=True)
 
@@ -458,6 +490,7 @@ with tab3:
             margin=dict(l=10, r=10, t=35, b=10),
             plot_bgcolor="#FFFFFF",
             paper_bgcolor="#FFFFFF",
+            font=dict(color="#1A1A1A"),
         )
         st.plotly_chart(fig_fcf, use_container_width=True)
 
