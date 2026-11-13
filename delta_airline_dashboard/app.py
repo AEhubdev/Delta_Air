@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Robust High-Contrast CGI Styling (Eliminating white-on-white and black-on-black table issues)
+# Comprehensive CGI Styling with Hard Enforcement for Light Tables and High-Contrast Text
 st.markdown(
     """
     <style>
@@ -30,8 +30,8 @@ st.markdown(
         color: #1A1A1A !important;
     }
 
-    /* Force all standard markdown text and paragraphs to be clearly visible */
-    p, span, label, .stMarkdown, li, .streamlit-expanderHeader {
+    /* Force all standard text, markdown, and labels to be dark and legible */
+    p, span, label, .stMarkdown, li, .streamlit-expanderHeader, div[data-baseweb="select"] {
         color: #1A1A1A !important;
     }
 
@@ -106,19 +106,40 @@ st.markdown(
         font-weight: 700 !important;
     }
 
-    /* Dataframes and Tables Contrast Fix */
-    div[data-testid="stDataFrame"], table {
+    /* STRICT ENFORCEMENT FOR LIGHT TABLES AND DATAFRAMES */
+    div[data-testid="stDataFrame"], div[data-testid="stTable"], .stTable {
+        background-color: #FFFFFF !important;
+        border-radius: 8px;
+        border: 1px solid #E2E8F0;
+        padding: 4px;
+    }
+
+    /* Target pandas dataframe table cells and headers */
+    table, th, td, tr {
         background-color: #FFFFFF !important;
         color: #1A1A1A !important;
     }
-    th {
+
+    thead tr th {
         background-color: #5236AB !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
+        text-align: left !important;
+        padding: 8px 12px !important;
     }
-    td {
-        color: #1A1A1A !important;
+
+    tbody tr td {
         background-color: #FFFFFF !important;
+        color: #1A1A1A !important;
+        border-bottom: 1px solid #EDF2F7 !important;
+        padding: 8px 12px !important;
+    }
+
+    /* Expander Styling */
+    div[data-testid="stExpander"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px;
     }
 
     /* Tabs Styling */
@@ -147,14 +168,15 @@ st.markdown(
         box-shadow: 0 5px 14px rgba(82, 54, 171, 0.30) !important;
     }
 
-    /* Info Box Styling */
+    /* Info Box / Alert Styling */
     div[data-testid="stAlert"] {
         background-color: #FFFFFF !important;
         border: 1px solid #E2D9F3 !important;
         border-left: 5px solid #5236AB !important;
         color: #1A1A1A !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
-    div[data-testid="stAlert"] p {
+    div[data-testid="stAlert"] p, div[data-testid="stAlert"] span {
         color: #1A1A1A !important;
     }
     </style>
@@ -190,7 +212,8 @@ with st.sidebar:
         """,
         unsafe_allow_html=True,
     )
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Delta_logo.svg/320px-Delta_logo.svg.png", width=170)
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Delta_logo.svg/320px-Delta_logo.svg.png",
+             width=170)
     st.markdown("### ⚙️ DCF Model Assumptions")
     rev_growth = st.slider("5Y Avg. Revenue Growth (%)", 1.0, 12.0, 4.5, 0.5) / 100.0
     ebit_margin = st.slider("Target Operating (EBIT) Margin (%)", 5.0, 18.0, 10.5, 0.5) / 100.0
@@ -307,9 +330,12 @@ with tab1:
 
         with c_fin1:
             fig_rev = go.Figure()
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#5236AB"))
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name="EBITDA ($B)", marker_color="#9B185A"))
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name="Free Cash Flow ($B)", marker_color="#E31937"))
+            fig_rev.add_trace(
+                go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#5236AB"))
+            fig_rev.add_trace(
+                go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name="EBITDA ($B)", marker_color="#9B185A"))
+            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name="Free Cash Flow ($B)",
+                                     marker_color="#E31937"))
             fig_rev.update_layout(
                 title="Revenue, EBITDA & Free Cash Flow ($B)",
                 barmode="group",
@@ -323,8 +349,10 @@ with tab1:
 
         with c_fin2:
             fig_debt = go.Figure()
-            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name="Total Debt ($B)", marker_color="#E31937"))
-            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Cash & Equivalents ($B)"], name="Cash ($B)", marker_color="#5236AB"))
+            fig_debt.add_trace(
+                go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name="Total Debt ($B)", marker_color="#E31937"))
+            fig_debt.add_trace(
+                go.Bar(x=fin_df["Year"], y=fin_df["Cash & Equivalents ($B)"], name="Cash ($B)", marker_color="#5236AB"))
             fig_debt.add_trace(
                 go.Scatter(
                     x=fin_df["Year"],
@@ -351,7 +379,6 @@ with tab1:
         with st.expander("📋 View Full Financial Summary Table (Excluding 2021)", expanded=True):
             st.dataframe(fin_df.set_index("Year").T.style.format("{:.2f}"), use_container_width=True)
 
-
 # =============================================================================
 # TAB 2: CORPORATE RISK MAPPING & HEDGING SCHEME DESIGN
 # =============================================================================
@@ -365,12 +392,18 @@ with tab2:
 
     st.markdown("#### 1. Top-Risk Matrix & Exposure Classification")
     risk_matrix_data = [
-        ["Risk Category", "Specific Risk Factor", "Probability", "EBIT Damage / Impact", "Mitigation & Hedging Instrument"],
-        ["Financial / Market", "Fuel Prices (Crude/Kerosene)", "High (≥30%)", "Critical (≥€650m)", "12-Month Zero-Cost Collar (Long Call, Short Put)"],
-        ["Financial / Market", "Exchange Rate (USD Focus)", "High (≥30%)", "Substantial (€325-650m)", "1-year EUR/USD Plain-Vanilla Forwards (80% ratio)"],
-        ["Financial / Market", "Interest Rate Risk", "Low (<20%)", "Moderate (€162.5-325m)", "Net-Fix Strategy (Balancing floating assets & liabilities)"],
-        ["Operational", "Labor Disputes / Strikes", "High (≥30%)", "Substantial (€325-650m)", "Process controls & labor negotiations (Unhedgable via fin. instruments)"],
-        ["ESG / Regulatory", "Carbon Pricing (EU ETS / SAF)", "High (≥30%)", "Moderate (€162.5-325m)", "Transition programs & SAF blending (Credit/ESG adjustment)"],
+        ["Risk Category", "Specific Risk Factor", "Probability", "EBIT Damage / Impact",
+         "Mitigation & Hedging Instrument"],
+        ["Financial / Market", "Fuel Prices (Crude/Kerosene)", "High (≥30%)", "Critical (≥€650m)",
+         "12-Month Zero-Cost Collar (Long Call, Short Put)"],
+        ["Financial / Market", "Exchange Rate (USD Focus)", "High (≥30%)", "Substantial (€325-650m)",
+         "1-year EUR/USD Plain-Vanilla Forwards (80% ratio)"],
+        ["Financial / Market", "Interest Rate Risk", "Low (<20%)", "Moderate (€162.5-325m)",
+         "Net-Fix Strategy (Balancing floating assets & liabilities)"],
+        ["Operational", "Labor Disputes / Strikes", "High (≥30%)", "Substantial (€325-650m)",
+         "Process controls & labor negotiations (Unhedgable via fin. instruments)"],
+        ["ESG / Regulatory", "Carbon Pricing (EU ETS / SAF)", "High (≥30%)", "Moderate (€162.5-325m)",
+         "Transition programs & SAF blending (Credit/ESG adjustment)"],
     ]
     st.table(pd.DataFrame(risk_matrix_data[1:], columns=risk_matrix_data[0]))
 
@@ -426,7 +459,6 @@ with tab2:
         - **Stakeholder Confidence:** Aligns Delta with top-tier airline industry standards (hedge ratios between 70% and 90%), stabilizing earnings and supporting an investment-grade credit profile.
         """
     )
-
 
 # =============================================================================
 # TAB 3: DCF VALUATION, MULTIPLES & CLIENT EXPORT
