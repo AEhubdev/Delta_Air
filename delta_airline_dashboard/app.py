@@ -14,18 +14,38 @@ from pdf_generator import generate_executive_pdf
 from outlook_helper import open_outlook_with_report
 
 st.set_page_config(
-    page_title="Delta Air Lines (DAL) – Risk Mapping & Hedging Dashboard",
+    page_title="Delta Air Lines (DAL) – CGI Consulting Dashboard",
     page_icon="✈️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+# CGI Branding CSS Styling
 st.markdown(
     """
     <style>
-    .main-header { font-size: 2.1rem; font-weight: 700; color: #003366; margin-bottom: 0.1rem; }
-    .sub-header { font-size: 1.0rem; color: #5A6B7C; margin-bottom: 1.2rem; }
-    .metric-card { background-color: #F8FAFC; border-left: 4px solid #C01933; padding: 12px 16px; border-radius: 6px; margin-bottom: 10px; }
+    .main-header { font-size: 2.1rem; font-weight: 700; color: #002B49; margin-bottom: 0.1rem; }
+    .sub-header { font-size: 1.0rem; color: #4A5568; margin-bottom: 1.2rem; }
+    .cgi-card {
+        background-color: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-left: 4px solid #E00034;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        color: #1E293B;
+    }
+    .stButton>button {
+        background-color: #E00034;
+        color: white;
+        border-radius: 4px;
+        border: none;
+        font-weight: 600;
+    }
+    .stButton>button:hover {
+        background-color: #B50029;
+        color: white;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -61,7 +81,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📧 Sales Meeting Prep")
-    recipient_email = st.text_input("Recipient Email (Optional)", placeholder="sales.team@bank.com")
+    recipient_email = st.text_input("Recipient Email (Optional)", placeholder="sales.team@cgi.com")
     if st.button("🔄 Refresh Live yfinance Data"):
         st.cache_data.clear()
         st.rerun()
@@ -80,7 +100,7 @@ dcf_results = run_dcf_model(
 
 st.markdown(f"<div class='main-header'>✈️ {info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)</div>", unsafe_allow_html=True)
 st.markdown(
-    f"<div class='sub-header'>Corporate Risk Mapping, Underlyings Profiling & Treasury Hedging Design Dashboard (Excl. 2021) | "
+    f"<div class='sub-header'>CGI Consulting Practice | Corporate Risk Mapping, Underlyings Profiling & Treasury Hedging Dashboard (Excl. 2021) | "
     f"Last Updated: {raw_data['fetched_at']}</div>",
     unsafe_allow_html=True,
 )
@@ -108,7 +128,7 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 # =============================================================================
-# TAB 1: COMPANY OVERVIEW & FINANCIALS
+# TAB 1: COMPANY OVERVIEW & FINANCIALS (Fixed White Box Styling)
 # =============================================================================
 with tab1:
     st.subheader("1. Company Overview & Market Positioning")
@@ -117,14 +137,17 @@ with tab1:
     with col_ov1:
         st.write(info.get("longBusinessSummary", "Business summary unavailable."))
     with col_ov2:
+        # Styled CGI Container resolving white box glitch
         st.markdown(
             f"""
-            <div class='metric-card'>
-            <b>Headquarters:</b> {info.get('city', 'Atlanta')}, {info.get('state', 'GA')}, {info.get('country', 'USA')}<br>
+            <div class='cgi-card'>
+            <h4 style="margin-top: 0; color: #002B49; font-size: 1.05rem; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px;">📊 Quick Factsheet</h4>
+            <b>Headquarters:</b> {info.get('city', 'Atlanta')}, {info.get('state', 'GA')}<br>
             <b>Employees:</b> {info.get('fullTimeEmployees', 100000):,}<br>
-            <b>Sector / Industry:</b> {info.get('sector', 'Industrials')} / {info.get('industry', 'Airlines')}<br>
-            <b>52-Week Range:</b> ${info.get('fiftyTwoWeekLow', 0):.2f} – ${info.get('fiftyTwoWeekHigh', 0):.2f}<br>
-            <b>Analyst Consensus:</b> {str(info.get('recommendationKey', 'BUY')).upper()} (Target: ${info.get('targetMeanPrice', 0):.2f})
+            <b>Sector:</b> {info.get('sector', 'Industrials')}<br>
+            <b>Industry:</b> {info.get('industry', 'Airlines')}<br>
+            <b>52W Range:</b> ${info.get('fiftyTwoWeekLow', 0):.2f} –${info.get('fiftyTwoWeekHigh', 0):.2f}<br>
+            <b>Consensus:</b> {str(info.get('recommendationKey', 'BUY')).upper()}
             </div>
             """,
             unsafe_allow_html=True,
@@ -137,7 +160,7 @@ with tab1:
         fig_bench = px.line(
             norm_bench,
             labels={"value": "Normalized Return (Base = 100)", "Date": "Date", "variable": "Ticker"},
-            color_discrete_map={"DAL": "#C01933", "^GSPC": "#003366", "JETS": "#64748B"},
+            color_discrete_map={"DAL": "#E00034", "^GSPC": "#002B49", "JETS": "#64748B"},
         )
         fig_bench.update_layout(height=360, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="")
         st.plotly_chart(fig_bench, use_container_width=True)
@@ -148,7 +171,7 @@ with tab1:
 
         with c_fin1:
             fig_rev = go.Figure()
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#003366"))
+            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#002B49"))
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name="EBITDA ($B)", marker_color="#3B82F6"))
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name="Free Cash Flow ($B)", marker_color="#10B981"))
             fig_rev.update_layout(title="Revenue, EBITDA & Free Cash Flow ($B)", barmode="group", height=360, margin=dict(l=10, r=10, t=40, b=10))
@@ -156,7 +179,7 @@ with tab1:
 
         with c_fin2:
             fig_debt = go.Figure()
-            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name="Total Debt ($B)", marker_color="#C01933"))
+            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name="Total Debt ($B)", marker_color="#E00034"))
             fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Cash & Equivalents ($B)"], name="Cash ($B)", marker_color="#0D9488"))
             fig_debt.add_trace(
                 go.Scatter(
@@ -165,7 +188,7 @@ with tab1:
                     name="Operating Margin (%)",
                     yaxis="y2",
                     mode="lines+markers",
-                    line=dict(color="#F59E0B", width=3),
+                    line=dict(color="#D97706", width=3),
                 )
             )
             fig_debt.update_layout(
@@ -183,25 +206,24 @@ with tab1:
 
 
 # =============================================================================
-# TAB 2: CORPORATE RISK MAPPING & HEDGING SCHEME DESIGN (LUFTHANSA CASE STUDY STYLE)
+# TAB 2: CORPORATE RISK MAPPING & HEDGING SCHEME DESIGN
 # =============================================================================
 with tab2:
-    st.subheader("🛡️ Corporate Risk Mapping & Treasury Hedging Scheme Design")
+    st.subheader("🛡️ CGI Corporate Risk Mapping & Treasury Hedging Scheme Design")
     st.markdown(
-        "Following the institutional risk-mapping framework (analogous to Lufthansa Group's risk architecture[cite: 7, 8]), "
+        "Following institutional risk-mapping frameworks (analogous to Lufthansa Group's risk architecture), "
         "exposures are categorized by probability and EBIT damage. Financial risks (Fuel and FX) are quantifiable and hedgeable via "
-        "derivatives, whereas interest-rate risk is managed through a balanced net-fix structure[cite: 7, 8]."
+        "derivatives, whereas interest-rate risk is managed through a balanced net-fix structure."
     )
 
-    # Risk Mapping Matrix Summary Table
     st.markdown("#### 1. Top-Risk Matrix & Exposure Classification")
     risk_matrix_data = [
         ["Risk Category", "Specific Risk Factor", "Probability", "EBIT Damage / Impact", "Mitigation & Hedging Instrument"],
-        ["Financial / Market", "Fuel Prices (Crude/Kerosene)", "High (≥30%)", "Critical (≥€650m)", "12-Month Zero-Cost Collar (Long Call, Short Put)[cite: 7, 16]"],
-        ["Financial / Market", "Exchange Rate (USD Focus)", "High (≥30%)", "Substantial (€325-650m)", "1-year EUR/USD Plain-Vanilla Forwards (80% ratio)[cite: 7, 15]"],
-        ["Financial / Market", "Interest Rate Risk", "Low (<20%)", "Moderate (€162.5-325m)", "Net-Fix Strategy (Balancing floating assets & liabilities)[cite: 7, 8]"],
-        ["Operational", "Labor Disputes / Strikes", "High (≥30%)", "Substantial (€325-650m)", "Process controls & labor negotiations (Unhedgable via fin. instruments)[cite: 7, 12]"],
-        ["ESG / Regulatory", "Carbon Pricing (EU ETS / SAF)", "High (≥30%)", "Moderate (€162.5-325m)", "Transition programs & SAF blending (Credit/ESG adjustment)[cite: 7, 12]"],
+        ["Financial / Market", "Fuel Prices (Crude/Kerosene)", "High (≥30%)", "Critical (≥€650m)", "12-Month Zero-Cost Collar (Long Call, Short Put)"],
+        ["Financial / Market", "Exchange Rate (USD Focus)", "High (≥30%)", "Substantial (€325-650m)", "1-year EUR/USD Plain-Vanilla Forwards (80% ratio)"],
+        ["Financial / Market", "Interest Rate Risk", "Low (<20%)", "Moderate (€162.5-325m)", "Net-Fix Strategy (Balancing floating assets & liabilities)"],
+        ["Operational", "Labor Disputes / Strikes", "High (≥30%)", "Substantial (€325-650m)", "Process controls & labor negotiations (Unhedgable via fin. instruments)"],
+        ["ESG / Regulatory", "Carbon Pricing (EU ETS / SAF)", "High (≥30%)", "Moderate (€162.5-325m)", "Transition programs & SAF blending (Credit/ESG adjustment)"],
     ]
     st.table(pd.DataFrame(risk_matrix_data[1:], columns=risk_matrix_data[0]))
 
@@ -211,16 +233,16 @@ with tab2:
     with i_col1:
         st.markdown(
             """
-            - **Net-Fix Strategy Mechanics:** Lufthansa and major network carriers maintain a balanced structure between floating-rate assets and liabilities to neutralize short-term interest rate sensitivity[cite: 8].
-            - **Post-Hedge Stability:** Long-term debt is issued at fixed rates or converted via cross-currency interest rate swaps (pay-fixed / receive-floating)[cite: 8].
-            - **Minimal P&L Impact:** After hedging, a $\pm 100\text{ bps}$ interest rate shift impacts net income by only $\approx \pm \text{€26m}$, rendering interest rate risk immaterial[cite: 8].
+            - **Net-Fix Strategy Mechanics:** Lufthansa and major network carriers maintain a balanced structure between floating-rate assets and liabilities to neutralize short-term interest rate sensitivity.
+            - **Post-Hedge Stability:** Long-term debt is issued at fixed rates or converted via cross-currency interest rate swaps (pay-fixed / receive-floating).
+            - **Minimal P&L Impact:** After hedging, a $\pm 100\text{ bps}$ interest rate shift impacts net income by only $\approx \pm \text{€26m}$, rendering interest rate risk immaterial.
             """
         )
     with i_col2:
         st.markdown(
             """
-            - **Floating Assets vs. Liabilities:** Short-term money market securities and cash equivalents provide natural offsets to floating borrowings[cite: 8].
-            - **Strategic Liquidity Buffer:** A controlled positive difference between floating assets and post-hedge floating debt accounts for timing differences and liquidity reserves[cite: 8].
+            - **Floating Assets vs. Liabilities:** Short-term money market securities and cash equivalents provide natural offsets to floating borrowings.
+            - **Strategic Liquidity Buffer:** A controlled positive difference between floating assets and post-hedge floating debt accounts for timing differences and liquidity reserves.
             """
         )
 
@@ -231,20 +253,20 @@ with tab2:
         st.markdown("#### 💱 EUR / USD Exchange Rate Profile")
         st.markdown(
             """
-            - **Behavior:** Near-normal distribution with low volatility ($\sim 7.19\%$) and near-symmetric returns[cite: 11, 14].
-            - **Valuation / Instrument:** Priced via Interest Rate Parity ($F = S_0 \cdot e^{(r_f - r_d)T}$ with zero premium)[cite: 14].
-            - **Hedge Implementation:** 1-year plain-vanilla EUR/USD forwards covering **80% of net exposure**[cite: 15].
-            - **Simulation Outcome:** Reduces cash flow volatility by **80%** (from €622m to €124m) and 95% VaR by **93%** (from €912m to €66m)[cite: 15, 16].
+            - **Behavior:** Near-normal distribution with low volatility ($\sim 7.19\%$) and near-symmetric returns.
+            - **Valuation / Instrument:** Priced via Interest Rate Parity ($F = S_0 \cdot e^{(r_f - r_d)T}$ with zero premium).
+            - **Hedge Implementation:** 1-year plain-vanilla EUR/USD forwards covering **80% of net exposure**.
+            - **Simulation Outcome:** Reduces cash flow volatility by **80%** (from €622m to €124m) and 95% VaR by **93%** (from €912m to €66m).
             """
         )
     with u_col2:
         st.markdown("#### 🛢️ Crude Oil / Fuel Price Profile")
         st.markdown(
             """
-            - **Behavior:** Extreme positive skewness ($1.83$) and heavy kurtosis ($17.47$), reflecting severe tail risk and energy shocks[cite: 11]. Annualized volatility $\sim 44.44\%$[cite: 11].
-            - **Valuation / Instrument:** Black-Scholes option pricing[cite: 14]. A **12-month zero-cost collar** (buying OTM call, selling OTM put) is chosen over a long call to avoid high upfront premium outlays while capping extreme cost spikes[cite: 14, 16].
-            - **Hedge Implementation:** Applied to **70% of annual fuel requirements**[cite: 16].
-            - **Simulation Outcome:** Reduces fuel cost volatility by **60%** (from €2,617m to €1,057m) and 95% VaR by **30%** (from €11,449m to €7,999m)[cite: 16].
+            - **Behavior:** Extreme positive skewness ($1.83$) and heavy kurtosis ($17.47$), reflecting severe tail risk and energy shocks. Annualized volatility $\sim 44.44\%$.
+            - **Valuation / Instrument:** Black-Scholes option pricing. A **12-month zero-cost collar** (buying OTM call, selling OTM put) is chosen over a long call to avoid high upfront premium outlays while capping extreme cost spikes.
+            - **Hedge Implementation:** Applied to **70% of annual fuel requirements**.
+            - **Simulation Outcome:** Reduces fuel cost volatility by **60%** (from €2,617m to €1,057m) and 95% VaR by **30%** (from €11,449m to €7,999m).
             """
         )
 
@@ -252,9 +274,9 @@ with tab2:
     st.subheader("4. Strategic Treasury Takeaways for Client Meeting Prep")
     st.markdown(
         """
-        - **Combined Hedging Effectiveness:** Implementing 80% FX forwards and a 70% fuel collar effectively neutralizes earnings variance under macroeconomic and geopolitical stress[cite: 4].
-        - **Asymmetric Protection:** The zero-cost collar protects against severe energy spikes while retaining downside participation up to the put strike floor[cite: 16].
-        - **Stakeholder Confidence:** Aligns Delta with top-tier airline industry standards (hedge ratios between 70% and 90%), stabilizing earnings and supporting an investment-grade credit profile[cite: 15].
+        - **Combined Hedging Effectiveness:** Implementing 80% FX forwards and a 70% fuel collar effectively neutralizes earnings variance under macroeconomic and geopolitical stress.
+        - **Asymmetric Protection:** The zero-cost collar protects against severe energy spikes while retaining downside participation up to the put strike floor.
+        - **Stakeholder Confidence:** Aligns Delta with top-tier airline industry standards (hedge ratios between 70% and 90%), stabilizing earnings and supporting an investment-grade credit profile.
         """
     )
 
@@ -314,7 +336,7 @@ with tab3:
             y=["Unlevered FCF ($B)", "PV of FCF ($B)"],
             barmode="group",
             title="Projected FCFF vs. Present Value ($B)",
-            color_discrete_sequence=["#003366", "#C01933"],
+            color_discrete_sequence=["#002B49", "#E00034"],
         )
         fig_fcf.update_layout(height=270, margin=dict(l=10, r=10, t=35, b=10))
         st.plotly_chart(fig_fcf, use_container_width=True)
@@ -323,62 +345,4 @@ with tab3:
     hedging_recs = [
         {
             "title": "12-Month Zero-Cost Crude & Jet Fuel Collars (70% Ratio)",
-            "detail": "Implement zero-cost collars (buying OTM call options funded by selling OTM put options) to cap jet fuel spikes while preserving downside participation up to the put floor.",
-        },
-        {
-            "title": "1-Year EUR/USD Plain-Vanilla Forwards (80% Ratio)",
-            "detail": "Establish staggered 12-month FX forward contracts covering 80% of forecasted international operational exposures to suppress linear FX volatility.",
-        },
-        {
-            "title": "Net-Fix Interest Rate Management",
-            "detail": "Maintain balanced floating assets and liabilities via cross-currency interest rate swaps to ensure rate shifts impact net income by no more than ±€26m.",
-        },
-    ]
-
-    for rec in hedging_recs:
-        st.markdown(f"- **{rec['title']}:** {rec['detail']}")
-
-    st.markdown("---")
-
-    st.subheader("4. Export Executive PDF & Prepare Client Meeting Email")
-
-    pdf_bytes = generate_executive_pdf(
-        data=raw_data,
-        fin_df=fin_df,
-        multiples=multiples,
-        dcf_results=dcf_results,
-        executive_summary=exec_summary_text,
-        hedging_recommendations=hedging_recs,
-    )
-
-    exp_col1, exp_col2 = st.columns(2)
-
-    with exp_col1:
-        st.download_button(
-            label="📥 Download Stylized Executive PDF Report",
-            data=pdf_bytes,
-            file_name="Delta_Air_Lines_Executive_Briefing.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-        )
-
-    with exp_col2:
-        if st.button("📧 Open Outlook & Attach Report for Client Meeting", type="primary", use_container_width=True):
-            highlights = (
-                f"- Current Price: ${multiples['Current Share Price ($)']:.2f} | DCF Implied Price: "
-                f"${bridge['Implied Share Price ($)']:.2f} ({bridge['Implied Upside / Downside (%)']:+.1f}%)\n"
-                f"- Revenue: ${latest_fin['Revenue ($B)']:.2f}B | EBITDA: ${latest_fin['EBITDA ($B)']:.2f}B | "
-                f"FCF: ${latest_fin['Free Cash Flow ($B)']:.2f}B\n"
-                f"- Net Debt / EBITDA: {latest_fin['Net Debt / EBITDA (x)']:.2f}x | EV/EBITDA: {multiples['EV / EBITDA (x)']}x\n"
-                f"- Key Pitch Angles: Risk Mapping Matrix, Net-Fix Interest Rate Model, 80% FX Forwards & 70% Fuel Collars"
-            )
-            success, msg = open_outlook_with_report(
-                pdf_bytes=pdf_bytes,
-                recipient=recipient_email,
-                company_name="Delta Air Lines (DAL)",
-                summary_highlights=highlights,
-            )
-            if success:
-                st.success(msg)
-            else:
-                st.warning(msg)
+            "detail": "Implement
