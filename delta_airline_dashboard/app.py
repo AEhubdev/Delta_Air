@@ -14,37 +14,119 @@ from pdf_generator import generate_executive_pdf
 from outlook_helper import open_outlook_with_report
 
 st.set_page_config(
-    page_title="Delta Air Lines (DAL) – CGI Consulting Dashboard",
+    page_title="Delta Air Lines (DAL) – CGI Advisory Dashboard",
     page_icon="✈️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# CGI Branding CSS Styling
+# CGI Signature Gradient Palette:
+# CGI Red (#E31937) -> CGI Magenta (#9B185A) -> CGI Violet/Purple (#5236AB)
 st.markdown(
     """
     <style>
-    .main-header { font-size: 2.1rem; font-weight: 700; color: #002B49; margin-bottom: 0.1rem; }
-    .sub-header { font-size: 1.0rem; color: #4A5568; margin-bottom: 1.2rem; }
+    /* Global App Background & Typography */
+    .stApp {
+        background-color: #F7F7FA;
+        color: #1C1C1C;
+    }
+
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #FFFFFF 0%, #F4F1F8 100%);
+        border-right: 2px solid #E5E0EC;
+    }
+
+    /* Top CGI Gradient Banner */
+    .cgi-banner {
+        background: linear-gradient(135deg, #E31937 0%, #9B185A 52%, #5236AB 100%);
+        padding: 22px 28px;
+        border-radius: 12px;
+        color: #FFFFFF;
+        margin-bottom: 1.2rem;
+        box-shadow: 0 6px 18px rgba(82, 54, 171, 0.18);
+    }
+    .cgi-banner-title {
+        font-size: 2.0rem;
+        font-weight: 700;
+        color: #FFFFFF;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.3px;
+    }
+    .cgi-banner-sub {
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0;
+    }
+
+    /* CGI Gradient Accent Card */
     .cgi-card {
         background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-left: 4px solid #E00034;
-        padding: 16px;
+        border: 1px solid #E6E2EE;
+        border-top: 4px solid transparent;
+        border-image: linear-gradient(90deg, #E31937 0%, #9B185A 50%, #5236AB 100%) 1;
+        padding: 16px 18px;
         border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        color: #1E293B;
+        box-shadow: 0 2px 8px rgba(28, 28, 28, 0.04);
+        color: #1C1C1C;
+        line-height: 1.6;
     }
-    .stButton>button {
-        background-color: #E00034;
-        color: white;
-        border-radius: 4px;
-        border: none;
+
+    /* Metric Cards Styling */
+    div[data-testid="stMetric"] {
+        background-color: #FFFFFF;
+        border: 1px solid #E6E2EE;
+        border-left: 4px solid #E31937;
+        padding: 12px 14px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(82, 54, 171, 0.05);
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #555566 !important;
         font-weight: 600;
     }
-    .stButton>button:hover {
-        background-color: #B50029;
-        color: white;
+    div[data-testid="stMetricValue"] {
+        color: #1C1C1C !important;
+    }
+
+    /* Section Headers with Subtle Gradient Underline */
+    h2, h3 {
+        color: #2A1B4E !important;
+    }
+
+    /* Tabs Styling */
+    button[data-baseweb="tab"] {
+        font-weight: 600 !important;
+        color: #4A4A5A !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #E31937 !important;
+        border-bottom: 3px solid #E31937 !important;
+    }
+
+    /* Primary & Download Buttons with CGI Gradient */
+    .stButton > button, .stDownloadButton > button {
+        background: linear-gradient(90deg, #E31937 0%, #9B185A 55%, #5236AB 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        padding: 0.55rem 1rem !important;
+        transition: all 0.25s ease !important;
+        box-shadow: 0 3px 10px rgba(227, 25, 55, 0.22) !important;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background: linear-gradient(90deg, #C8142F 0%, #83124B 55%, #41298F 100%) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 5px 14px rgba(82, 54, 171, 0.30) !important;
+    }
+
+    /* Info Box Accent */
+    div[data-testid="stAlert"] {
+        background-color: #FFFFFF;
+        border: 1px solid #E2D9F3;
+        border-left: 5px solid #5236AB;
+        color: #1C1C1C;
     }
     </style>
     """,
@@ -69,7 +151,17 @@ except Exception as exc:
 info = raw_data["info"]
 
 with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Delta_logo.svg/320px-Delta_logo.svg.png", width=180)
+    st.markdown(
+        """
+        <div style="background: linear-gradient(90deg, #E31937 0%, #5236AB 100%);
+                    padding: 10px 14px; border-radius: 8px; color: white; font-weight: 700;
+                    font-size: 1.15rem; margin-bottom: 12px; letter-spacing: 0.5px;">
+            CGI | Advisory Suite
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Delta_logo.svg/320px-Delta_logo.svg.png", width=170)
     st.markdown("### ⚙️ DCF Model Assumptions")
     rev_growth = st.slider("5Y Avg. Revenue Growth (%)", 1.0, 12.0, 4.5, 0.5) / 100.0
     ebit_margin = st.slider("Target Operating (EBIT) Margin (%)", 5.0, 18.0, 10.5, 0.5) / 100.0
@@ -82,7 +174,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📧 Sales Meeting Prep")
     recipient_email = st.text_input("Recipient Email (Optional)", placeholder="sales.team@cgi.com")
-    if st.button("🔄 Refresh Live yfinance Data"):
+    if st.button("🔄 Refresh Live yfinance Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
@@ -98,10 +190,17 @@ dcf_results = run_dcf_model(
     terminal_growth_rate=tgr,
 )
 
-st.markdown(f"<div class='main-header'>✈️ {info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)</div>", unsafe_allow_html=True)
+# CGI Gradient Hero Banner
 st.markdown(
-    f"<div class='sub-header'>CGI Consulting Practice | Corporate Risk Mapping, Underlyings Profiling & Treasury Hedging Dashboard (Excl. 2021) | "
-    f"Last Updated: {raw_data['fetched_at']}</div>",
+    f"""
+    <div class='cgi-banner'>
+        <div class='cgi-banner-title'>✈️ {info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)</div>
+        <div class='cgi-banner-sub'>
+            CGI Financial & Treasury Advisory | Corporate Risk Mapping, Underlyings Profiling & DCF Valuation (Excl. 2021) &bull;
+            Updated: {raw_data['fetched_at']}
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
@@ -117,7 +216,7 @@ k6.metric(
     f"{dcf_results['valuation_bridge']['Implied Upside / Downside (%)']:+.1f}%",
 )
 
-st.markdown("---")
+st.markdown("<br>", unsafe_allow_html=True)
 
 tab1, tab2, tab3 = st.tabs(
     [
@@ -128,7 +227,7 @@ tab1, tab2, tab3 = st.tabs(
 )
 
 # =============================================================================
-# TAB 1: COMPANY OVERVIEW & FINANCIALS (Fixed White Box Styling)
+# TAB 1: COMPANY OVERVIEW & FINANCIALS
 # =============================================================================
 with tab1:
     st.subheader("1. Company Overview & Market Positioning")
@@ -137,11 +236,12 @@ with tab1:
     with col_ov1:
         st.write(info.get("longBusinessSummary", "Business summary unavailable."))
     with col_ov2:
-        # Styled CGI Container resolving white box glitch
         st.markdown(
             f"""
             <div class='cgi-card'>
-            <h4 style="margin-top: 0; color: #002B49; font-size: 1.05rem; border-bottom: 1px solid #E2E8F0; padding-bottom: 6px;">📊 Quick Factsheet</h4>
+            <h4 style="margin-top: 0; color: #5236AB; font-size: 1.05rem; border-bottom: 1px solid #ECE8F4; padding-bottom: 6px;">
+                📊 Client Quick Factsheet
+            </h4>
             <b>Headquarters:</b> {info.get('city', 'Atlanta')}, {info.get('state', 'GA')}<br>
             <b>Employees:</b> {info.get('fullTimeEmployees', 100000):,}<br>
             <b>Sector:</b> {info.get('sector', 'Industrials')}<br>
@@ -160,9 +260,15 @@ with tab1:
         fig_bench = px.line(
             norm_bench,
             labels={"value": "Normalized Return (Base = 100)", "Date": "Date", "variable": "Ticker"},
-            color_discrete_map={"DAL": "#E00034", "^GSPC": "#002B49", "JETS": "#64748B"},
+            color_discrete_map={"DAL": "#E31937", "^GSPC": "#5236AB", "JETS": "#9B185A"},
         )
-        fig_bench.update_layout(height=360, margin=dict(l=10, r=10, t=20, b=10), legend_title_text="")
+        fig_bench.update_layout(
+            height=360,
+            margin=dict(l=10, r=10, t=20, b=10),
+            legend_title_text="",
+            plot_bgcolor="#FFFFFF",
+            paper_bgcolor="#FFFFFF",
+        )
         st.plotly_chart(fig_bench, use_container_width=True)
 
     st.subheader("3. Multi-Year Financial Performance (Excluding 2021)")
@@ -171,16 +277,23 @@ with tab1:
 
         with c_fin1:
             fig_rev = go.Figure()
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#002B49"))
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name="EBITDA ($B)", marker_color="#3B82F6"))
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name="Free Cash Flow ($B)", marker_color="#10B981"))
-            fig_rev.update_layout(title="Revenue, EBITDA & Free Cash Flow ($B)", barmode="group", height=360, margin=dict(l=10, r=10, t=40, b=10))
+            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name="Revenue ($B)", marker_color="#5236AB"))
+            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name="EBITDA ($B)", marker_color="#9B185A"))
+            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name="Free Cash Flow ($B)", marker_color="#E31937"))
+            fig_rev.update_layout(
+                title="Revenue, EBITDA & Free Cash Flow ($B)",
+                barmode="group",
+                height=360,
+                margin=dict(l=10, r=10, t=40, b=10),
+                plot_bgcolor="#FFFFFF",
+                paper_bgcolor="#FFFFFF",
+            )
             st.plotly_chart(fig_rev, use_container_width=True)
 
         with c_fin2:
             fig_debt = go.Figure()
-            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name="Total Debt ($B)", marker_color="#E00034"))
-            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Cash & Equivalents ($B)"], name="Cash ($B)", marker_color="#0D9488"))
+            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name="Total Debt ($B)", marker_color="#E31937"))
+            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Cash & Equivalents ($B)"], name="Cash ($B)", marker_color="#5236AB"))
             fig_debt.add_trace(
                 go.Scatter(
                     x=fin_df["Year"],
@@ -188,7 +301,7 @@ with tab1:
                     name="Operating Margin (%)",
                     yaxis="y2",
                     mode="lines+markers",
-                    line=dict(color="#D97706", width=3),
+                    line=dict(color="#9B185A", width=3),
                 )
             )
             fig_debt.update_layout(
@@ -198,6 +311,8 @@ with tab1:
                 yaxis2=dict(title="Margin (%)", overlaying="y", side="right"),
                 height=360,
                 margin=dict(l=10, r=10, t=40, b=10),
+                plot_bgcolor="#FFFFFF",
+                paper_bgcolor="#FFFFFF",
             )
             st.plotly_chart(fig_debt, use_container_width=True)
 
@@ -336,9 +451,14 @@ with tab3:
             y=["Unlevered FCF ($B)", "PV of FCF ($B)"],
             barmode="group",
             title="Projected FCFF vs. Present Value ($B)",
-            color_discrete_sequence=["#002B49", "#E00034"],
+            color_discrete_sequence=["#5236AB", "#E31937"],
         )
-        fig_fcf.update_layout(height=270, margin=dict(l=10, r=10, t=35, b=10))
+        fig_fcf.update_layout(
+            height=270,
+            margin=dict(l=10, r=10, t=35, b=10),
+            plot_bgcolor="#FFFFFF",
+            paper_bgcolor="#FFFFFF",
+        )
         st.plotly_chart(fig_fcf, use_container_width=True)
 
     st.subheader("3. Actionable Treasury Recommendations")

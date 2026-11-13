@@ -33,25 +33,26 @@ def generate_executive_pdf(
     )
 
     styles = getSampleStyleSheet()
-    cgi_navy = colors.HexColor("#002B49")
-    cgi_red = colors.HexColor("#E00034")
-    slate = colors.HexColor("#F8FAFC")
-    dark_text = colors.HexColor("#1E293B")
-    muted_text = colors.HexColor("#64748B")
+    cgi_violet = colors.HexColor("#5236AB")
+    cgi_red = colors.HexColor("#E31937")
+    cgi_magenta = colors.HexColor("#9B185A")
+    slate = colors.HexColor("#F7F7FA")
+    dark_text = colors.HexColor("#1C1C1C")
+    muted_text = colors.HexColor("#555566")
 
-    title_style = ParagraphStyle("ReportTitle", parent=styles["Heading1"], fontSize=18, leading=22, textColor=cgi_navy, spaceAfter=4)
+    title_style = ParagraphStyle("ReportTitle", parent=styles["Heading1"], fontSize=18, leading=22, textColor=cgi_violet, spaceAfter=4)
     subtitle_style = ParagraphStyle("ReportSubtitle", parent=styles["Normal"], fontSize=9.5, textColor=muted_text, spaceAfter=10)
-    h2_style = ParagraphStyle("SectionHeader", parent=styles["Heading2"], fontSize=12, leading=15, textColor=cgi_navy, spaceBefore=12, spaceAfter=6)
+    h2_style = ParagraphStyle("SectionHeader", parent=styles["Heading2"], fontSize=12, leading=15, textColor=cgi_magenta, spaceBefore=12, spaceAfter=6)
     body_style = ParagraphStyle("BodyTextCustom", parent=styles["Normal"], fontSize=9.2, leading=13.5, textColor=dark_text, spaceAfter=6)
     bullet_style = ParagraphStyle("BulletCustom", parent=body_style, leftIndent=12, bulletIndent=4, spaceAfter=4)
 
     elements = []
     info = data["info"]
 
-    elements.append(Paragraph("CGI CONSULTING – CORPORATE RISK MAPPING & HEDGING BRIEFING", subtitle_style))
+    elements.append(Paragraph("CGI ADVISORY – CORPORATE RISK MAPPING & HEDGING BRIEFING", subtitle_style))
     elements.append(Paragraph(f"{info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)", title_style))
     elements.append(Paragraph(f"Sector: {info.get('sector', 'Industrials')} | Industry: {info.get('industry', 'Airlines')} | Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}", subtitle_style))
-    elements.append(HRFlowable(width="100%", thickness=1.5, color=cgi_red, spaceAfter=10))
+    elements.append(HRFlowable(width="100%", thickness=2.0, color=cgi_red, spaceAfter=10))
 
     elements.append(Paragraph("1. Executive Performance & Risk Summary", h2_style))
     elements.append(Paragraph(executive_summary, body_style))
@@ -72,12 +73,12 @@ def generate_executive_pdf(
 
     val_table = Table(val_table_data, colWidths=[52 * mm, 36 * mm, 54 * mm, 36 * mm])
     val_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), cgi_navy),
+        ("BACKGROUND", (0, 0), (-1, 0), cgi_violet),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8.5),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, slate]),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#DCD6E8")),
         ("PADDING", (0, 0), (-1, -1), 5),
     ]))
     elements.append(val_table)
@@ -102,12 +103,12 @@ def generate_executive_pdf(
         col_w = [58 * mm] + [(120 / len(fin_df)) * mm] * len(fin_df)
         hist_table = Table(hist_rows, colWidths=col_w)
         hist_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), cgi_navy),
+            ("BACKGROUND", (0, 0), (-1, 0), cgi_violet),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 8.5),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, slate]),
-            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#DCD6E8")),
             ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
             ("PADDING", (0, 0), (-1, -1), 5),
         ]))
