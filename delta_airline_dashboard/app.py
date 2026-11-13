@@ -146,7 +146,7 @@ with tab1:
             <b>Employees:</b> {info.get('fullTimeEmployees', 100000):,}<br>
             <b>Sector:</b> {info.get('sector', 'Industrials')}<br>
             <b>Industry:</b> {info.get('industry', 'Airlines')}<br>
-            <b>52W Range:</b> ${info.get('fiftyTwoWeekLow', 0):.2f} –${info.get('fiftyTwoWeekHigh', 0):.2f}<br>
+            <b>52W Range:</b> ${info.get('fiftyTwoWeekLow', 0):.2f} – ${info.get('fiftyTwoWeekHigh', 0):.2f}<br>
             <b>Consensus:</b> {str(info.get('recommendationKey', 'BUY')).upper()}
             </div>
             """,
@@ -345,4 +345,62 @@ with tab3:
     hedging_recs = [
         {
             "title": "12-Month Zero-Cost Crude & Jet Fuel Collars (70% Ratio)",
-            "detail": "Implement
+            "detail": "Implement zero-cost collars (buying OTM call options funded by selling OTM put options) to cap jet fuel spikes while preserving downside participation up to the put floor.",
+        },
+        {
+            "title": "1-Year EUR/USD Plain-Vanilla Forwards (80% Ratio)",
+            "detail": "Establish staggered 12-month FX forward contracts covering 80% of forecasted international operational exposures to suppress linear FX volatility.",
+        },
+        {
+            "title": "Net-Fix Interest Rate Management",
+            "detail": "Maintain balanced floating assets and liabilities via cross-currency interest rate swaps to ensure rate shifts impact net income by no more than ±€26m.",
+        },
+    ]
+
+    for rec in hedging_recs:
+        st.markdown(f"- **{rec['title']}:** {rec['detail']}")
+
+    st.markdown("---")
+
+    st.subheader("4. Export Executive PDF & Prepare Client Meeting Email")
+
+    pdf_bytes = generate_executive_pdf(
+        data=raw_data,
+        fin_df=fin_df,
+        multiples=multiples,
+        dcf_results=dcf_results,
+        executive_summary=exec_summary_text,
+        hedging_recommendations=hedging_recs,
+    )
+
+    exp_col1, exp_col2 = st.columns(2)
+
+    with exp_col1:
+        st.download_button(
+            label="📥 Download Stylized Executive PDF Report",
+            data=pdf_bytes,
+            file_name="Delta_Air_Lines_Executive_Briefing.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+    with exp_col2:
+        if st.button("📧 Open Outlook & Attach Report for Client Meeting", type="primary", use_container_width=True):
+            highlights = (
+                f"- Current Price: ${multiples['Current Share Price ($)']:.2f} | DCF Implied Price: "
+                f"${bridge['Implied Share Price ($)']:.2f} ({bridge['Implied Upside / Downside (%)']:+.1f}%)\n"
+                f"- Revenue: ${latest_fin['Revenue ($B)']:.2f}B | EBITDA: ${latest_fin['EBITDA ($B)']:.2f}B | "
+                f"FCF: ${latest_fin['Free Cash Flow ($B)']:.2f}B\n"
+                f"- Net Debt / EBITDA: {latest_fin['Net Debt / EBITDA (x)']:.2f}x | EV/EBITDA: {multiples['EV / EBITDA (x)']}x\n"
+                f"- Key Pitch Angles: Risk Mapping Matrix, Net-Fix Interest Rate Model, 80% FX Forwards & 70% Fuel Collars"
+            )
+            success, msg = open_outlook_with_report(
+                pdf_bytes=pdf_bytes,
+                recipient=recipient_email,
+                company_name="Delta Air Lines (DAL)",
+                summary_highlights=highlights,
+            )
+            if success:
+                st.success(msg)
+            else:
+                st.warning(msg)
