@@ -22,9 +22,6 @@ def generate_executive_pdf(
     executive_summary: str,
     hedging_recommendations: list,
 ) -> bytes:
-    """
-    Builds a stylized institutional executive briefing PDF in memory and returns raw bytes.
-    """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -85,7 +82,6 @@ def generate_executive_pdf(
     elements = []
     info = data["info"]
 
-    # Header Block
     elements.append(Paragraph("CLIENT BRIEFING & EQUITY RESEARCH REPORT", subtitle_style))
     elements.append(Paragraph(f"{info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)", title_style))
     elements.append(
@@ -97,11 +93,9 @@ def generate_executive_pdf(
     )
     elements.append(HRFlowable(width="100%", thickness=1.5, color=crimson, spaceAfter=10))
 
-    # 1. Executive Summary
     elements.append(Paragraph("1. Executive Performance & Sales Briefing Summary", h2_style))
     elements.append(Paragraph(executive_summary, body_style))
 
-    # 2. Key Valuation Multiples & DCF Snapshot Table
     elements.append(Paragraph("2. Market Multiples & DCF Valuation Summary", h2_style))
     bridge = dcf_results["valuation_bridge"]
     wacc_info = dcf_results["wacc_details"]
@@ -135,8 +129,7 @@ def generate_executive_pdf(
     elements.append(val_table)
     elements.append(Spacer(1, 8))
 
-    # 3. Historical Financial Performance Table
-    elements.append(Paragraph("3. Historical Financial Performance (USD Billions)", h2_style))
+    elements.append(Paragraph("3. Historical Financial Performance (USD Billions - Excl. 2021)", h2_style))
     if not fin_df.empty:
         hist_headers = ["Metric ($B)"] + list(fin_df["Year"])
         metrics_to_show = [
@@ -172,8 +165,7 @@ def generate_executive_pdf(
         elements.append(hist_table)
         elements.append(Spacer(1, 8))
 
-    # 4. Hedging Strategy & Corporate Banking Advisory Recommendations
-    elements.append(Paragraph("4. Hedging & Treasury Risk Management Recommendations", h2_style))
+    elements.append(Paragraph("4. Hedging Strategy & Treasury Risk Management Recommendations", h2_style))
     for rec in hedging_recommendations:
         elements.append(Paragraph(f"• <b>{rec['title']}:</b> {rec['detail']}", bullet_style))
 
@@ -187,6 +179,4 @@ def generate_executive_pdf(
     )
 
     doc.build(elements)
-    pdf_bytes = buffer.getvalue()
-    buffer.close()
-    return pdf_bytes
+    return buffer.getvalue()

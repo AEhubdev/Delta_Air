@@ -12,10 +12,6 @@ def open_outlook_with_report(
     company_name: str = "Delta Air Lines (DAL)",
     summary_highlights: str = "",
 ) -> tuple[bool, str]:
-    """
-    Saves the PDF briefing to a temporary file and opens Microsoft Outlook
-    with the report automatically attached and pre-populated for a sales meeting.
-    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     filename = f"DAL_Executive_Briefing_{timestamp}.pdf"
     temp_dir = tempfile.gettempdir()
@@ -36,7 +32,6 @@ def open_outlook_with_report(
         f"Corporate & Transaction Banking Sales"
     )
 
-    # Primary method: Native Windows Outlook COM Automation (attaches PDF automatically)
     if sys.platform == "win32":
         try:
             import pythoncom
@@ -44,15 +39,14 @@ def open_outlook_with_report(
 
             pythoncom.CoInitialize()
             outlook = win32.Dispatch("Outlook.Application")
-            mail = outlook.CreateItem(0)  # 0 = olMailItem
+            mail = outlook.CreateItem(0)
             mail.To = recipient
             mail.Subject = subject
             mail.Body = body
             mail.Attachments.Add(os.path.abspath(file_path))
-            mail.Display(False)  # Opens the email draft window on screen
+            mail.Display(False)
             return True, f"Outlook draft opened with '{filename}' attached."
         except Exception as e:
-            # Fallback to mailto if Outlook desktop client is not installed/configured
             mailto_url = (
                 f"mailto:{urllib.parse.quote(recipient)}"
                 f"?subject={urllib.parse.quote(subject)}"
@@ -64,7 +58,6 @@ def open_outlook_with_report(
                 f"Please manually attach the saved report from: {file_path}"
             )
 
-    # Fallback for macOS / Linux
     mailto_url = (
         f"mailto:{urllib.parse.quote(recipient)}"
         f"?subject={urllib.parse.quote(subject)}"

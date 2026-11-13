@@ -5,22 +5,14 @@ from datetime import datetime
 
 
 def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
-    """
-    Fetches comprehensive live financial data, statements, historical prices,
-    and valuation multiples from yfinance.
-    """
     ticker = yf.Ticker(ticker_symbol)
     info = ticker.info
-
-    # Historical price data (3 Years)
     hist = ticker.history(period="3y")
 
-    # Financial Statements (Annual)
     income_stmt = ticker.financials
     balance_sheet = ticker.balance_sheet
     cash_flow = ticker.cashflow
 
-    # Clean and sort columns chronologically (oldest to newest)
     if not income_stmt.empty:
         income_stmt = income_stmt.iloc[:, ::-1]
     if not balance_sheet.empty:
@@ -28,7 +20,6 @@ def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
     if not cash_flow.empty:
         cash_flow = cash_flow.iloc[:, ::-1]
 
-    # Benchmark comparison (S&P 500 & US Global Jets ETF)
     benchmarks = yf.download(["DAL", "^GSPC", "JETS"], period="2y", progress=False)["Close"]
 
     return {
@@ -44,7 +35,6 @@ def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
 
 
 def _safe_get(df: pd.DataFrame, possible_keys: list) -> pd.Series:
-    """Safely extracts the first matching row from a financial statement DataFrame."""
     if df is None or df.empty:
         return pd.Series(dtype=float)
     for key in possible_keys:
@@ -54,7 +44,6 @@ def _safe_get(df: pd.DataFrame, possible_keys: list) -> pd.Series:
 
 
 def extract_financial_summary(data: dict) -> pd.DataFrame:
-    """Builds a clean multi-year financial KPI table from raw yfinance statements."""
     inc = data["income_stmt"]
     bs = data["balance_sheet"]
     cf = data["cash_flow"]
@@ -62,7 +51,7 @@ def extract_financial_summary(data: dict) -> pd.DataFrame:
     if inc.empty:
         return pd.DataFrame()
 
-    years = [col.strftime("%Y") if hasattr(col, "strftime") else str(col)[:4] for col in inc.columns]
+    raw_years = [col.strftime("%Y") if hasattr(col, "strftime") else str(col)[:4] for col in inc.columns]
 
     rev = _safe_get(inc, ["Total Revenue", "Operating Revenue"]).values
     ebit = _safe_get(inc, ["EBIT", "Operating Income"]).values
@@ -80,7 +69,7 @@ def extract_financial_summary(data: dict) -> pd.DataFrame:
 
     df = pd.DataFrame(
         {
-            "Year": years,
+            "Year": raw_years,
             "Revenue ($B)": rev / 1e9,
             "EBIT ($B)": ebit / 1e9,
             "EBITDA ($B)": ebitda / 1e9,
@@ -96,6 +85,9 @@ def extract_financial_summary(data: dict) -> pd.DataFrame:
         }
     )
 
+    # Exclude 2021 data per user instructions
+    df = df[df["Year"] != "2021"].reset_index(drop=True)
+
     df["Operating Margin (%)"] = np.where(df["Revenue ($B)"] > 0, (df["EBIT ($B)"] / df["Revenue ($B)"]) * 100, 0)
     df["EBITDA Margin (%)"] = np.where(df["Revenue ($B)"] > 0, (df["EBITDA ($B)"] / df["Revenue ($B)"]) * 100, 0)
     df["Net Margin (%)"] = np.where(df["Revenue ($B)"] > 0, (df["Net Income ($B)"] / df["Revenue ($B)"]) * 100, 0)
@@ -105,7 +97,6 @@ def extract_financial_summary(data: dict) -> pd.DataFrame:
 
 
 def extract_valuation_multiples(data: dict, fin_df: pd.DataFrame) -> dict:
-    """Computes trailing and forward valuation multiples combining yfinance info & statements."""
     info = data["info"]
     price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
     mkt_cap = info.get("marketCap") or 0.0
@@ -146,10 +137,6 @@ def run_dcf_model(
     terminal_growth_rate: float = 0.025,
     projection_years: int = 5,
 ) -> dict:
-    """
-    Executes a full 5-year Unlevered Free Cash Flow (FCFF) DCF Valuation model
-    using CAPM-derived WACC and live balance sheet capital structure.
-    """
     info = data["info"]
     latest = fin_df.iloc[-1]
 
@@ -162,31 +149,23 @@ def run_dcf_model(
     shares_out = info.get("sharesOutstanding") or (mkt_cap / (info.get("currentPrice") or 50.0))
     beta = info.get("beta") or 1.25
 
-    # 1. Cost of Equity (CAPM)
     cost_of_equity = risk_free_rate + beta * equity_risk_premium
-
-    # 2. Pre-Tax & After-Tax Cost of Debt
     pre_tax_cost_debt = (int_exp / total_debt) if total_debt > 0 and int_exp > 0 else 0.055
     pre_tax_cost_debt = np.clip(pre_tax_cost_debt, 0.03, 0.10)
     after_tax_cost_debt = pre_tax_cost_debt * (1 - tax_rate)
 
-    # 3. Capital Structure Weights & WACC
     total_capital = mkt_cap + total_debt
     weight_equity = mkt_cap / total_capital if total_capital > 0 else 0.65
     weight_debt = total_debt / total_capital if total_capital > 0 else 0.35
     wacc = (weight_equity * cost_of_equity) + (weight_debt * after_tax_cost_debt)
-
-    # Ensure WACC > terminal growth rate to prevent division error
     wacc = max(wacc, terminal_growth_rate + 0.015)
 
-    # 4. Project Unlevered Free Cash Flows (FCFF)
     rows = []
     curr_rev = base_rev
     base_year = int(latest["Year"])
 
     for t in range(1, projection_years + 1):
         proj_year = base_year + t
-        # Gradually taper growth toward terminal rate in outer years
         step_growth = rev_growth_rate - ((rev_growth_rate - terminal_growth_rate) * ((t - 1) / projection_years) * 0.4)
         proj_rev = curr_rev * (1 + step_growth)
         proj_ebit = proj_rev * ebit_margin
@@ -217,12 +196,10 @@ def run_dcf_model(
 
     proj_df = pd.DataFrame(rows)
 
-    # 5. Terminal Value (Gordon Growth Model)
     final_fcff = proj_df.iloc[-1]["Unlevered FCF ($B)"] * 1e9
     terminal_value = (final_fcff * (1 + terminal_growth_rate)) / (wacc - terminal_growth_rate)
     pv_terminal_value = terminal_value / ((1 + wacc) ** projection_years)
 
-    # 6. Enterprise Value to Implied Share Price Bridge
     sum_pv_fcff = proj_df["PV of FCF ($B)"].sum() * 1e9
     implied_ev = sum_pv_fcff + pv_terminal_value
     implied_equity_val = implied_ev + cash - total_debt
@@ -230,7 +207,6 @@ def run_dcf_model(
     current_price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
     upside_pct = ((implied_share_price - current_price) / current_price * 100) if current_price > 0 else 0.0
 
-    # 7. WACC vs Terminal Growth Sensitivity Matrix
     wacc_range = [wacc - 0.01, wacc - 0.005, wacc, wacc + 0.005, wacc + 0.01]
     tgr_range = [terminal_growth_rate - 0.005, terminal_growth_rate, terminal_growth_rate + 0.005]
     sens_data = {}
