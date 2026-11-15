@@ -22,7 +22,7 @@ st.set_page_config(
     page_title="CGI Client Advisory Dashboard",
     page_icon="💼",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="locked",
 )
 
 # Robust High-Contrast CGI Styling with Custom Table and Card Classes
