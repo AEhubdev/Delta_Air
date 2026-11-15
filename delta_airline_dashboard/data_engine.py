@@ -4,7 +4,46 @@ import numpy as np
 from datetime import datetime
 
 
-def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
+COMPANIES = {
+    "Delta Air Lines (DAL)": {
+        "ticker": "DAL", "currency": "USD", "currency_symbol": "$",
+        "benchmarks": ("^GSPC", "JETS"), "benchmark_names": ("S&P 500", "U.S. Airlines ETF"),
+        "risk_profile": "airlines", "exclude_years": ("2021",),
+    },
+    "adidas AG (ADS.DE)": {
+        "ticker": "ADS.DE", "currency": "EUR", "currency_symbol": "€",
+        "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
+        "risk_profile": "consumer_apparel", "exclude_years": (),
+    },
+    "Deutsche Lufthansa AG (LHA.DE)": {
+        "ticker": "LHA.DE", "currency": "EUR", "currency_symbol": "€",
+        "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
+        "risk_profile": "airlines", "exclude_years": (),
+    },
+    "BMW AG (BMW.DE)": {
+        "ticker": "BMW.DE", "currency": "EUR", "currency_symbol": "€",
+        "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
+        "risk_profile": "automotive", "exclude_years": (),
+    },
+    "Siemens AG (SIE.DE)": {
+        "ticker": "SIE.DE", "currency": "EUR", "currency_symbol": "€",
+        "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
+        "risk_profile": "industrials", "exclude_years": (),
+    },
+    "SAP SE (SAP.DE)": {
+        "ticker": "SAP.DE", "currency": "EUR", "currency_symbol": "€",
+        "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
+        "risk_profile": "software", "exclude_years": (),
+    },
+}
+
+
+def fetch_company_data(
+    ticker_symbol: str,
+    benchmark_symbols: tuple[str, ...] = ("^GSPC", "JETS"),
+    currency: str = "USD",
+) -> dict:
+    """Fetch market and statement data for the selected company and benchmarks."""
     ticker = yf.Ticker(ticker_symbol)
     info = ticker.info
     hist = ticker.history(period="3y")
@@ -20,10 +59,21 @@ def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
     if not cash_flow.empty:
         cash_flow = cash_flow.iloc[:, ::-1]
 
-    benchmarks = yf.download(["DAL", "^GSPC", "JETS"], period="2y", progress=False)["Close"]
+    symbols = list(dict.fromkeys([ticker_symbol, *benchmark_symbols]))
+    try:
+        downloaded = yf.download(symbols, period="2y", progress=False, auto_adjust=True)
+        if isinstance(downloaded.columns, pd.MultiIndex):
+            benchmarks = downloaded["Close"] if "Close" in downloaded.columns.get_level_values(0) else pd.DataFrame()
+        elif "Close" in downloaded.columns:
+            benchmarks = downloaded[["Close"]].rename(columns={"Close": ticker_symbol})
+        else:
+            benchmarks = pd.DataFrame()
+    except Exception:
+        benchmarks = pd.DataFrame()
 
     return {
         "ticker": ticker_symbol,
+        "currency": info.get("currency") or currency,
         "info": info,
         "history": hist,
         "income_stmt": income_stmt,
@@ -32,6 +82,11 @@ def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
         "benchmarks": benchmarks,
         "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
+
+
+def fetch_delta_data(ticker_symbol: str = "DAL") -> dict:
+    """Backward-compatible alias for the original Delta data loader."""
+    return fetch_company_data(ticker_symbol)
 
 
 def _safe_get(df: pd.DataFrame, possible_keys: list) -> pd.Series:
@@ -43,7 +98,7 @@ def _safe_get(df: pd.DataFrame, possible_keys: list) -> pd.Series:
     return pd.Series(0.0, index=df.columns)
 
 
-def extract_financial_summary(data: dict) -> pd.DataFrame:
+def extract_financial_summary(data: dict, exclude_years: tuple[str, ...] = ()) -> pd.DataFrame:
     inc = data["income_stmt"]
     bs = data["balance_sheet"]
     cf = data["cash_flow"]
@@ -85,8 +140,8 @@ def extract_financial_summary(data: dict) -> pd.DataFrame:
         }
     )
 
-    # Exclude 2021 per instructions
-    df = df[df["Year"] != "2021"].reset_index(drop=True)
+    if exclude_years:
+        df = df[~df["Year"].isin(exclude_years)].reset_index(drop=True)
 
     df["Operating Margin (%)"] = np.where(df["Revenue ($B)"] > 0, (df["EBIT ($B)"] / df["Revenue ($B)"]) * 100, 0)
     df["EBITDA Margin (%)"] = np.where(df["Revenue ($B)"] > 0, (df["EBITDA ($B)"] / df["Revenue ($B)"]) * 100, 0)

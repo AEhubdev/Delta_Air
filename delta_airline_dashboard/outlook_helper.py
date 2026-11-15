@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import tempfile
 import urllib.parse
@@ -9,11 +10,12 @@ from datetime import datetime
 def open_outlook_with_report(
     pdf_bytes: bytes,
     recipient: str = "",
-    company_name: str = "Delta Air Lines (DAL)",
+    company_name: str = "Selected company",
     summary_highlights: str = "",
 ) -> tuple[bool, str]:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    filename = f"DAL_Executive_Briefing_{timestamp}.pdf"
+    company_slug = re.sub(r"[^A-Za-z0-9_-]+", "_", company_name).strip("_") or "Client"
+    filename = f"{company_slug}_Executive_Briefing_{timestamp}.pdf"
     temp_dir = tempfile.gettempdir()
     file_path = os.path.join(temp_dir, filename)
 

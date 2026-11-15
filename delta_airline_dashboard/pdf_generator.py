@@ -1,5 +1,6 @@
 import io
 from datetime import datetime
+from xml.sax.saxutils import escape
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -21,6 +22,10 @@ def generate_executive_pdf(
     dcf_results: dict,
     executive_summary: str,
     hedging_recommendations: list,
+    currency_symbol: str = "$",
+    currency_code: str = "USD",
+    company_name: str | None = None,
+    exclude_years: tuple[str, ...] = (),
 ) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -48,14 +53,16 @@ def generate_executive_pdf(
 
     elements = []
     info = data["info"]
+    report_company = company_name or info.get("longName", "Selected company")
+    excluded_note = f" | Excluded years: {', '.join(exclude_years)}" if exclude_years else ""
 
     elements.append(Paragraph("CGI ADVISORY – CORPORATE RISK MAPPING & HEDGING BRIEFING", subtitle_style))
-    elements.append(Paragraph(f"{info.get('longName', 'Delta Air Lines, Inc.')} (NYSE: DAL)", title_style))
-    elements.append(Paragraph(f"Sector: {info.get('sector', 'Industrials')} | Industry: {info.get('industry', 'Airlines')} | Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}", subtitle_style))
+    elements.append(Paragraph(escape(report_company), title_style))
+    elements.append(Paragraph(f"Sector: {escape(str(info.get('sector') or 'Not reported'))} | Industry: {escape(str(info.get('industry') or 'Not reported'))}{excluded_note} | Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}", subtitle_style))
     elements.append(HRFlowable(width="100%", thickness=2.0, color=cgi_red, spaceAfter=10))
 
     elements.append(Paragraph("1. Executive Performance & Risk Summary", h2_style))
-    elements.append(Paragraph(executive_summary, body_style))
+    elements.append(Paragraph(escape(executive_summary), body_style))
 
     elements.append(Paragraph("2. Market Multiples & DCF Valuation Summary", h2_style))
     bridge = dcf_results["valuation_bridge"]
@@ -63,12 +70,12 @@ def generate_executive_pdf(
 
     val_table_data = [
         ["Market & Trading Multiples", "Value", "DCF Valuation Bridge", "Value"],
-        ["Current Share Price", f"${multiples['Current Share Price ($)']:.2f}", "Implied Share Price (DCF)", f"${bridge['Implied Share Price ($)']:.2f}"],
-        ["Market Capitalization", f"${multiples['Market Cap ($B)']:.2f}B", "Implied Upside / Downside", f"{bridge['Implied Upside / Downside (%)']:+.2f}%"],
-        ["Enterprise Value (EV)", f"${multiples['Enterprise Value ($B)']:.2f}B", "Implied Enterprise Value", f"${bridge['Implied Enterprise Value ($B)']:.2f}B"],
+        ["Current Share Price", f"{currency_symbol}{multiples['Current Share Price ($)']:.2f}", "Implied Share Price (DCF)", f"{currency_symbol}{bridge['Implied Share Price ($)']:.2f}"],
+        ["Market Capitalization", f"{currency_symbol}{multiples['Market Cap ($B)']:.2f}B", "Implied Upside / Downside", f"{bridge['Implied Upside / Downside (%)']:+.2f}%"],
+        ["Enterprise Value (EV)", f"{currency_symbol}{multiples['Enterprise Value ($B)']:.2f}B", "Implied Enterprise Value", f"{currency_symbol}{bridge['Implied Enterprise Value ($B)']:.2f}B"],
         ["Trailing / Forward P/E", f"{multiples['Trailing P/E (x)']}x / {multiples['Forward P/E (x)']}x", "Calculated WACC", f"{wacc_info['Calculated WACC (%)']:.2f}%"],
         ["EV / EBITDA", f"{multiples['EV / EBITDA (x)']}x", "Terminal Growth Rate", f"{wacc_info['Terminal Growth Rate (%)']:.2f}%"],
-        ["FCF Yield / Beta", f"{multiples['FCF Yield (%)']}% / {multiples['Beta (5Y Monthly)']}", "Net Debt ($B)", f"${fin_df.iloc[-1]['Net Debt ($B)']:.2f}B"],
+        ["FCF Yield / Beta", f"{multiples['FCF Yield (%)']}% / {multiples['Beta (5Y Monthly)']}", f"Net Debt ({currency_code}B)", f"{currency_symbol}{fin_df.iloc[-1]['Net Debt ($B)']:.2f}B"],
     ]
 
     val_table = Table(val_table_data, colWidths=[52 * mm, 36 * mm, 54 * mm, 36 * mm])
@@ -84,16 +91,16 @@ def generate_executive_pdf(
     elements.append(val_table)
     elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph("3. Historical Financial Performance (USD Billions - Excl. 2021)", h2_style))
+    elements.append(Paragraph(f"3. Historical Financial Performance ({currency_code} Billions{excluded_note})", h2_style))
     if not fin_df.empty:
-        hist_headers = ["Metric ($B)"] + list(fin_df["Year"])
+        hist_headers = [f"Metric ({currency_code}B)"] + list(fin_df["Year"])
         metrics_to_show = [
-            ("Revenue ($B)", "Revenue ($B)"),
-            ("EBIT ($B)", "EBIT ($B)"),
-            ("EBITDA ($B)", "EBITDA ($B)"),
-            ("Net Income ($B)", "Net Income ($B)"),
-            ("Free Cash Flow ($B)", "Free Cash Flow ($B)"),
-            ("Net Debt ($B)", "Net Debt ($B)"),
+            (f"Revenue ({currency_code}B)", "Revenue ($B)"),
+            (f"EBIT ({currency_code}B)", "EBIT ($B)"),
+            (f"EBITDA ({currency_code}B)", "EBITDA ($B)"),
+            (f"Net Income ({currency_code}B)", "Net Income ($B)"),
+            (f"Free Cash Flow ({currency_code}B)", "Free Cash Flow ($B)"),
+            (f"Net Debt ({currency_code}B)", "Net Debt ($B)"),
             ("Operating Margin (%)", "Operating Margin (%)"),
         ]
         hist_rows = [hist_headers]
@@ -117,7 +124,7 @@ def generate_executive_pdf(
 
     elements.append(Paragraph("4. Treasury Hedging Scheme Design & Recommendations", h2_style))
     for rec in hedging_recommendations:
-        elements.append(Paragraph(f"• <b>{rec['title']}:</b> {rec['detail']}", bullet_style))
+        elements.append(Paragraph(f"• <b>{escape(rec['title'])}:</b> {escape(rec['detail'])}", bullet_style))
 
     elements.append(Spacer(1, 10))
     elements.append(HRFlowable(width="100%", thickness=0.6, color=muted_text, spaceAfter=4))
