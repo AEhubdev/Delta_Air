@@ -16,7 +16,7 @@ from data_engine import (
     run_dcf_model,
 )
 from pdf_generator import generate_executive_pdf
-from outlook_helper import open_outlook_with_report
+from outlook_helper import build_email_eml, build_mailto_url
 
 st.set_page_config(
     page_title="CGI Client Advisory Dashboard",
@@ -273,6 +273,22 @@ company_name = info.get("longName") or selected_company.split(" (")[0]
 company_label = f"{company_name} ({ticker_symbol})"
 currency_symbol = {"USD": "$", "EUR": "€", "GBP": "£", "CHF": "CHF ", "CAD": "C$", "JPY": "¥"}.get(raw_data.get("currency", currency_code), currency_symbol)
 
+for data_warning in raw_data.get("warnings", []):
+    st.warning(data_warning)
+
+if fin_df.empty or float(fin_df.iloc[-1]["Revenue ($B)"]) <= 0:
+    st.error(
+        f"Yahoo Finance did not return usable annual or trailing revenue for {company_label}. "
+        "Choose another company or refresh the data; the DCF dashboard needs a revenue base."
+    )
+    st.stop()
+
+if str(fin_df.iloc[-1]["Year"]).upper() == "TTM":
+    st.info(
+        f"Annual statements were unavailable for {company_label}. Financials and DCF use Yahoo Finance trailing-twelve-month quote data; "
+        "validate these figures before using them with a client."
+    )
+
 dcf_results = run_dcf_model(
     data=raw_data,
     fin_df=fin_df,
@@ -500,7 +516,7 @@ with tab3:
     wacc_details = dcf_results["wacc_details"]
 
     exec_summary_text = (
-        f"{company_label}: in the latest available financial year ({latest_fin['Year']}), reported revenue was "
+        f"{company_label}: in the latest available financial period ({latest_fin['Year']}), reported revenue was "
         f"{currency_symbol}{latest_fin['Revenue ($B)']:.2f}B, EBITDA was {currency_symbol}{latest_fin['EBITDA ($B)']:.2f}B "
         f"({latest_fin['EBITDA Margin (%)']:.1f}% margin), and free cash flow was "
         f"{currency_symbol}{latest_fin['Free Cash Flow ($B)']:.2f}B. Net debt was "
@@ -610,35 +626,55 @@ with tab3:
 
     exp_col1, exp_col2 = st.columns(2)
 
+    pdf_filename = f"{ticker_symbol.replace('.', '_')}_Executive_Briefing.pdf"
+    highlights = (
+        f"- Current Price: {currency_symbol}{multiples['Current Share Price ($)']:.2f} | DCF scenario: "
+        f"{currency_symbol}{bridge['Implied Share Price ($)']:.2f} ({bridge['Implied Upside / Downside (%)']:+.1f}%)\n"
+        f"- Revenue: {currency_symbol}{latest_fin['Revenue ($B)']:.2f}B | EBITDA: {currency_symbol}{latest_fin['EBITDA ($B)']:.2f}B | "
+        f"FCF: {currency_symbol}{latest_fin['Free Cash Flow ($B)']:.2f}B\n"
+        f"- Net Debt / EBITDA: {latest_fin['Net Debt / EBITDA (x)']:.2f}x | EV/EBITDA: {multiples['EV / EBITDA (x)']}x\n"
+        f"- Discussion: {', '.join(area for area, _, _ in risk_rows[:3])}"
+    )
+    mailto_url = build_mailto_url(
+        recipient=recipient_email,
+        company_name=company_label,
+        summary_highlights=highlights,
+    )
+    eml_bytes = build_email_eml(
+        pdf_bytes=pdf_bytes,
+        recipient=recipient_email,
+        company_name=company_label,
+        summary_highlights=highlights,
+        filename=pdf_filename,
+    )
+
     with exp_col1:
         st.download_button(
             label="📥 Download Stylized Executive PDF Report",
             data=pdf_bytes,
-            file_name=f"{ticker_symbol.replace('.', '_')}_Executive_Briefing.pdf",
+            file_name=pdf_filename,
             mime="application/pdf",
             use_container_width=True,
         )
 
     with exp_col2:
-        if st.button("📧 Open Outlook & Attach Report for Client Meeting", type="primary", use_container_width=True):
-            highlights = (
-                f"- Current Price: {currency_symbol}{multiples['Current Share Price ($)']:.2f} | DCF scenario: "
-                f"{currency_symbol}{bridge['Implied Share Price ($)']:.2f} ({bridge['Implied Upside / Downside (%)']:+.1f}%)\n"
-                f"- Revenue: {currency_symbol}{latest_fin['Revenue ($B)']:.2f}B | EBITDA: {currency_symbol}{latest_fin['EBITDA ($B)']:.2f}B | "
-                f"FCF: {currency_symbol}{latest_fin['Free Cash Flow ($B)']:.2f}B\n"
-                f"- Net Debt / EBITDA: {latest_fin['Net Debt / EBITDA (x)']:.2f}x | EV/EBITDA: {multiples['EV / EBITDA (x)']}x\n"
-                f"- Discussion: {', '.join(area for area, _, _ in risk_rows[:3])}"
-            )
-            success, msg = open_outlook_with_report(
-                pdf_bytes=pdf_bytes,
-                recipient=recipient_email,
-                company_name=company_label,
-                summary_highlights=highlights,
-            )
-            if success:
-                st.success(msg)
-            else:
-                st.warning(msg)
+        st.link_button(
+            "📧 Open email draft in your default mail app",
+            mailto_url,
+            type="primary",
+            use_container_width=True,
+        )
+        st.download_button(
+            label="📎 Download Outlook draft with PDF attached (.eml)",
+            data=eml_bytes,
+            file_name=f"{ticker_symbol.replace('.', '_')}_Meeting_Email.eml",
+            mime="message/rfc822",
+            use_container_width=True,
+        )
+        st.caption(
+            "The email link opens a mail app on your device. To keep the report attached, "
+            "download and open the .eml draft; or download the PDF and attach it to the email yourself."
+        )
 
 
 # =============================================================================
