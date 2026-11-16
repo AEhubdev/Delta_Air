@@ -1,7 +1,10 @@
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import html
+import re
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 
 COMPANIES = {
@@ -62,6 +65,83 @@ def fetch_company_data(
         warnings.append(f"Price history unavailable ({type(exc).__name__}).")
     if hist.empty:
         warnings.append("Yahoo Finance returned no daily price history for this ticker.")
+
+    try:
+        if callable(getattr(ticker, "get_news", None)):
+            raw_news = ticker.get_news(count=12, tab="news") or []
+        else:
+            raw_news = ticker.news or []
+    except Exception as exc:
+        raw_news = []
+        warnings.append(f"Company news unavailable ({type(exc).__name__}).")
+    if not raw_news and callable(getattr(yf, "Search", None)):
+        try:
+            search_results = yf.Search(ticker_symbol, max_results=1, news_count=12)
+            raw_news = getattr(search_results, "news", []) or []
+        except Exception:
+            # Keep the dashboard usable when the secondary news endpoint is unavailable.
+            raw_news = []
+
+    def normalize_news_item(item: dict) -> dict | None:
+        content = item.get("content") if isinstance(item.get("content"), dict) else item
+        title = str(content.get("title") or "").strip()
+        if not title:
+            return None
+
+        provider_value = content.get("provider") or content.get("publisher") or {}
+        provider = provider_value.get("displayName", "") if isinstance(provider_value, dict) else str(provider_value)
+        url_value = content.get("canonicalUrl") or content.get("clickThroughUrl") or content.get("link") or item.get("link")
+        url = url_value.get("url", "") if isinstance(url_value, dict) else str(url_value or "")
+        try:
+            if urlparse(url).scheme not in {"http", "https"}:
+                url = ""
+        except ValueError:
+            url = ""
+        summary = str(content.get("summary") or content.get("description") or content.get("snippet") or "").strip()
+        summary = html.unescape(re.sub(r"<[^>]+>", " ", summary))
+        summary = re.sub(r"\s+", " ", summary)
+
+        published_value = content.get("pubDate") or content.get("displayTime") or content.get("providerPublishTime") or item.get("providerPublishTime")
+        published_at = ""
+        published_display = "Date not provided"
+        published_dt = None
+        try:
+            if isinstance(published_value, (int, float)):
+                published_dt = datetime.fromtimestamp(published_value, tz=timezone.utc)
+            elif published_value:
+                published_dt = datetime.fromisoformat(str(published_value).replace("Z", "+00:00"))
+                if published_dt.tzinfo is None:
+                    published_dt = published_dt.replace(tzinfo=timezone.utc)
+                published_dt = published_dt.astimezone(timezone.utc)
+        except (OverflowError, OSError, TypeError, ValueError):
+            published_dt = None
+        if published_dt is not None:
+            published_at = published_dt.isoformat()
+            published_display = published_dt.strftime("%d %b %Y %H:%M UTC")
+
+        return {
+            "title": title,
+            "summary": summary,
+            "publisher": provider or "Publisher not listed",
+            "published_at": published_at,
+            "published_display": published_display,
+            "url": url,
+        }
+
+    normalized_news = [
+        normalized for item in raw_news
+        if isinstance(item, dict) and (normalized := normalize_news_item(item)) is not None
+    ]
+    news_cutoff = datetime.now(timezone.utc) - timedelta(days=45)
+    news = []
+    for item in normalized_news:
+        if item["published_at"]:
+            published_dt = datetime.fromisoformat(item["published_at"])
+            if published_dt < news_cutoff:
+                continue
+        news.append(item)
+        if len(news) >= 8:
+            break
 
     def fetch_statement(attribute: str, label: str) -> pd.DataFrame:
         try:
@@ -143,6 +223,7 @@ def fetch_company_data(
         "currency": info.get("currency") or currency,
         "info": info,
         "history": hist,
+        "news": news,
         "income_stmt": income_stmt,
         "balance_sheet": balance_sheet,
         "cash_flow": cash_flow,

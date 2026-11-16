@@ -527,6 +527,91 @@ with tab1:
     else:
         st.info("Generate an analysis to review financial trends, cash generation, leverage, valuation signals, and client-call questions.")
 
+    st.markdown("---")
+    st.subheader("📰 Recent AI News Summary")
+    st.caption("News is drawn from Yahoo Finance and limited to recent coverage; AI commentary is based on the headline and available article excerpt.")
+    company_news = raw_data.get("news", [])
+    news_context = [
+        {
+            "title": item["title"],
+            "publisher": item["publisher"],
+            "published": item["published_display"],
+            "available_excerpt": item.get("summary") or "No article excerpt was provided; headline only.",
+            "source_url": item.get("url", ""),
+        }
+        for item in company_news
+    ]
+    news_analytics_key = json.dumps(
+        {
+            "ticker": ticker_symbol,
+            "articles": [
+                {"title": item["title"], "published_at": item["published_at"], "url": item["url"]}
+                for item in company_news
+            ],
+        },
+        sort_keys=True,
+    )
+    saved_news_analytics = st.session_state.get("ai_news_summaries", {})
+    if company_news:
+        news_button_label = "🔄 Refresh AI news summary" if news_analytics_key in saved_news_analytics else "📰 Summarize recent company news with AI"
+        if st.button(news_button_label, key=f"summarize_company_news_{ticker_symbol}"):
+            api_key, model_name = get_openai_settings()
+            if not api_key:
+                st.warning("Set `OPENAI_API_KEY` in Streamlit Secrets to summarize company news.")
+            else:
+                news_instructions = (
+                    "You are preparing a sourced company news briefing for a corporate banking client call. "
+                    "Use only the supplied news items. Summarize the main themes and possible financial relevance as hypotheses, "
+                    "not confirmed impacts. Distinguish article facts from headline-only signals, do not infer facts absent from excerpts, "
+                    "and do not give investment advice. Mention if coverage is thin or sources overlap. "
+                    "Return concise Markdown with headings: News themes; Potential business or financial relevance to validate; "
+                    "Three client-call questions; Coverage limitations."
+                )
+                try:
+                    from openai import OpenAI
+
+                    client = OpenAI(api_key=api_key, timeout=45.0, max_retries=1)
+                    with st.spinner("Summarizing recent company headlines…"):
+                        response = client.responses.create(
+                            model=model_name,
+                            instructions=news_instructions,
+                            input="Recent company news and source metadata (JSON):\n" + json.dumps(
+                                news_context, ensure_ascii=False, default=str
+                            ),
+                            max_output_tokens=650,
+                            store=False,
+                        )
+                    news_analysis = response.output_text.strip()
+                    if news_analysis:
+                        saved_news_analytics[news_analytics_key] = news_analysis
+                        st.session_state["ai_news_summaries"] = saved_news_analytics
+                    else:
+                        st.error("The AI service returned an empty news summary. Please try again.")
+                except Exception:
+                    st.error("AI news summary failed. Check the API key, selected model, and server connection, then try again.")
+
+        saved_news_analytics = st.session_state.get("ai_news_summaries", {})
+        if news_analytics_key in saved_news_analytics:
+            st.markdown(saved_news_analytics[news_analytics_key])
+            st.caption("AI synthesis is based on the displayed article metadata and available excerpts, not full-text verification.")
+        else:
+            st.info("Generate an AI summary to identify recent themes and client-call questions from the available coverage.")
+
+        with st.expander(f"View {len(company_news)} recent source articles", expanded=False):
+            for item in company_news:
+                title = item["title"]
+                publisher = item["publisher"]
+                published = item["published_display"]
+                url = item.get("url", "")
+                if url.startswith(("https://", "http://")):
+                    st.markdown(f"- [{title}]({url}) — {publisher} · {published}")
+                else:
+                    st.markdown(f"- **{title}** — {publisher} · {published}")
+                if item.get("summary"):
+                    st.caption(item["summary"])
+    else:
+        st.info("No recent company articles were returned by the news feed. The PDF will note that no recent news was available.")
+
     st.subheader(f"2. Relative Market Performance ({company_label} vs. {', '.join(company_config['benchmark_names'])})")
     bench_df = raw_data["benchmarks"].dropna()
     if not bench_df.empty:
@@ -774,6 +859,22 @@ with tab3:
 
     st.subheader("4. Export Executive PDF & Prepare Client Meeting Email")
 
+    saved_ai_financial_summaries = st.session_state.get("ai_financial_analytics", {})
+    saved_ai_news_summaries = st.session_state.get("ai_news_summaries", {})
+    ai_financial_summary = saved_ai_financial_summaries.get(analytics_key, "")
+    ai_news_summary = saved_ai_news_summaries.get(news_analytics_key, "")
+    dcf_assumptions = {
+        "Revenue growth": f"{rev_growth * 100:.2f}%",
+        "Target EBIT margin": f"{ebit_margin * 100:.2f}%",
+        "Effective tax rate": f"{tax_rate * 100:.2f}%",
+        "CapEx / revenue": f"{capex_pct * 100:.2f}%",
+        "Risk-free rate": f"{rf_rate * 100:.2f}%",
+        "Equity risk premium": f"{erp * 100:.2f}%",
+        "Terminal growth": f"{tgr * 100:.2f}%",
+    }
+    if not ai_financial_summary or (company_news and not ai_news_summary):
+        st.info("For the full AI-enhanced PDF, generate the financial and recent news summaries in Tab 1 before downloading.")
+
     pdf_bytes = generate_executive_pdf(
         data=raw_data,
         fin_df=fin_df,
@@ -785,6 +886,11 @@ with tab3:
         currency_code=currency_code,
         company_name=company_label,
         exclude_years=company_config["exclude_years"],
+        ai_financial_summary=ai_financial_summary,
+        ai_news_summary=ai_news_summary,
+        company_news=company_news,
+        dcf_assumptions=dcf_assumptions,
+        data_timestamp=raw_data.get("fetched_at", "Not available"),
     )
 
     exp_col1, exp_col2 = st.columns(2)
@@ -877,6 +983,7 @@ chat_context = {
     "industry": info.get("industry"),
     "reporting_currency": currency_code,
     "data_timestamp": raw_data.get("fetched_at"),
+    "recent_company_news": raw_data.get("news", []),
     "latest_financial_year": latest_chat_fin["Year"] if latest_chat_fin is not None else None,
     "latest_financials_billions": {
         "revenue": round(float(latest_chat_fin["Revenue ($B)"]), 2),
