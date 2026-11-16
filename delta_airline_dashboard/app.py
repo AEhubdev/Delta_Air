@@ -1,6 +1,8 @@
 import html
 import json
 import os
+from email.message import EmailMessage
+from urllib.parse import quote
 
 import streamlit as st
 import pandas as pd
@@ -16,7 +18,40 @@ from data_engine import (
     run_dcf_model,
 )
 from pdf_generator import generate_executive_pdf
-from outlook_helper import build_email_eml, build_mailto_url
+
+
+def build_mailto_url(recipient: str, company_name: str, summary_highlights: str) -> str:
+    """Build a mailto link that opens in the viewer's local mail application."""
+    subject = f"Client Meeting Prep: {company_name} - Financial, Risk & Hedging Briefing"
+    body = (
+        f"Hi Team,\n\nAhead of our upcoming client meeting with {company_name}, please find the "
+        "latest financial analysis, DCF valuation summary, and corporate hedging strategy briefing attached.\n\n"
+        f"Key Highlights:\n{summary_highlights}\n\n"
+        "Please review the attached PDF prior to our call.\n\nBest regards,\nCorporate & Transaction Banking Sales"
+    )
+    return f"mailto:{quote(recipient.strip(), safe='@,;')}?subject={quote(subject)}&body={quote(body)}"
+
+
+def build_email_eml(
+    pdf_bytes: bytes,
+    recipient: str,
+    company_name: str,
+    summary_highlights: str,
+    filename: str,
+) -> bytes:
+    """Build a downloadable email draft with the report attached."""
+    message = EmailMessage()
+    if recipient.strip():
+        message["To"] = recipient.strip()
+    message["Subject"] = f"Client Meeting Prep: {company_name} - Financial, Risk & Hedging Briefing"
+    message.set_content(
+        f"Hi Team,\n\nAhead of our upcoming client meeting with {company_name}, please find the "
+        "latest financial analysis, DCF valuation summary, and corporate hedging strategy briefing attached.\n\n"
+        f"Key Highlights:\n{summary_highlights}\n\n"
+        "Please review the attached PDF prior to our call.\n\nBest regards,\nCorporate & Transaction Banking Sales"
+    )
+    message.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=filename)
+    return message.as_bytes()
 
 st.set_page_config(
     page_title="CGI Client Advisory Dashboard",
