@@ -417,22 +417,90 @@ info = raw_data["info"]
 company_name = info.get("longName") or selected_company.split(" (")[0]
 company_label = f"{company_name} ({ticker_symbol})"
 currency_symbol = {"USD": "$", "EUR": "€", "GBP": "£", "CHF": "CHF ", "CAD": "C$", "JPY": "¥"}.get(raw_data.get("currency", currency_code), currency_symbol)
+live_business_summary = str(info.get("longBusinessSummary") or "").strip()
+business_summary = live_business_summary or company_config.get(
+    "overview",
+    f"{company_name} is included in this dashboard for company and financial review. Yahoo Finance did not provide a current business description.",
+)
+
+def quote_text(value, suffix=""):
+    try:
+        number = float(value)
+        return f"{number:,.2f}{suffix}" if np.isfinite(number) and number > 0 else "Not available"
+    except (TypeError, ValueError):
+        return "Not available"
+
+
+def currency_text(value, suffix=""):
+    formatted = quote_text(value)
+    return f"{currency_symbol}{formatted}{suffix}" if formatted != "Not available" else formatted
+
+
+try:
+    employee_count = int(float(info.get("fullTimeEmployees") or 0))
+    employee_text = f"{employee_count:,}" if employee_count > 0 else "Not reported"
+except (TypeError, ValueError):
+    employee_text = "Not reported"
+
+headquarters = ", ".join(filter(None, [str(info.get("city") or "").strip(), str(info.get("country") or "").strip()])) or "Not reported"
+sector_text = str(info.get("sector") or company_config.get("sector") or "Not reported")
+industry_text = str(info.get("industry") or company_config.get("industry") or "Not reported")
+low_52w = info.get("fiftyTwoWeekLow")
+high_52w = info.get("fiftyTwoWeekHigh")
+range_text = (
+    f"{currency_symbol}{quote_text(low_52w)} – {currency_symbol}{quote_text(high_52w)}"
+    if quote_text(low_52w) != "Not available" and quote_text(high_52w) != "Not available"
+    else "Not available"
+)
+consensus_text = str(info.get("recommendationKey") or "Not reported").upper()
+
+factsheet_html = f"""
+<div class='cgi-card'>
+<h4 style="margin-top: 0; color: #5236AB; font-size: 1.05rem; border-bottom: 1px solid #ECE8F4; padding-bottom: 6px;">
+    📊 Client Quick Factsheet
+</h4>
+<b>Headquarters:</b> {html.escape(headquarters)}<br>
+<b>Employees:</b> {html.escape(employee_text)}<br>
+<b>Sector:</b> {html.escape(sector_text)}<br>
+<b>Industry:</b> {html.escape(industry_text)}<br>
+<b>52W Range:</b> {html.escape(range_text)}<br>
+<b>Consensus:</b> {html.escape(consensus_text)}
+</div>
+"""
 
 for data_warning in raw_data.get("warnings", []):
     st.warning(data_warning)
 
 if fin_df.empty or float(fin_df.iloc[-1]["Revenue ($B)"]) <= 0:
-    st.error(
+    st.warning(
         f"Yahoo Finance did not return usable annual or trailing revenue for {company_label}. "
-        "Choose another company or refresh the data; the DCF dashboard needs a revenue base."
+        "Financial valuation is unavailable until a revenue base is returned. The company profile and available market data are shown below."
     )
+    st.subheader("Company Overview & Market Positioning")
+    overview_col, facts_col = st.columns([2, 1])
+    with overview_col:
+        st.write(business_summary)
+        if not live_business_summary:
+            st.caption("Yahoo Finance did not provide a company description; this is the dashboard’s static overview.")
+    with facts_col:
+        st.markdown(factsheet_html, unsafe_allow_html=True)
+    quote_cols = st.columns(3)
+    quote_cols[0].metric("Share Price", currency_text(multiples["Current Share Price ($)"]))
+    quote_cols[1].metric("Market Cap", currency_text(multiples["Market Cap ($B)"], "B"))
+    quote_cols[2].metric("Enterprise Value", currency_text(multiples["Enterprise Value ($B)"], "B"))
     st.stop()
 
 if str(fin_df.iloc[-1]["Year"]).upper() == "TTM":
-    st.info(
-        f"Annual statements were unavailable for {company_label}. Financials and DCF use Yahoo Finance trailing-twelve-month quote data; "
-        "validate these figures before using them with a client."
-    )
+    if raw_data.get("annual_financials_available"):
+        st.info(
+            f"A separate TTM row supplements annual statements for {company_label} because Yahoo omitted one or more key statement items. "
+            "The row is clearly labelled and uses trailing-twelve-month quote or quarterly data where available. Validate the period basis before client use."
+        )
+    else:
+        st.info(
+            f"Annual statements were unavailable for {company_label}. Financials and DCF use Yahoo Finance trailing-twelve-month quote data; "
+            "validate these figures before using them with a client."
+        )
 
 dcf_results = run_dcf_model(
     data=raw_data,
@@ -461,14 +529,14 @@ st.markdown(
 )
 
 k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric("Share Price", f"{currency_symbol}{multiples['Current Share Price ($)']:.2f}")
-k2.metric("Market Cap", f"{currency_symbol}{multiples['Market Cap ($B)']:.2f}B")
-k3.metric("Enterprise Value", f"{currency_symbol}{multiples['Enterprise Value ($B)']:.2f}B")
-k4.metric("EV / EBITDA", f"{multiples['EV / EBITDA (x)']}x")
-k5.metric("Trailing / Fwd P/E", f"{multiples['Trailing P/E (x)']}x / {multiples['Forward P/E (x)']}x")
+k1.metric("Share Price", currency_text(multiples["Current Share Price ($)"]))
+k2.metric("Market Cap", currency_text(multiples["Market Cap ($B)"], "B"))
+k3.metric("Enterprise Value", currency_text(multiples["Enterprise Value ($B)"], "B"))
+k4.metric("EV / EBITDA", f"{quote_text(multiples['EV / EBITDA (x)'], 'x')}")
+k5.metric("Trailing / Fwd P/E", f"{quote_text(multiples['Trailing P/E (x)'], 'x')} / {quote_text(multiples['Forward P/E (x)'], 'x')}")
 k6.metric(
     "DCF Implied Price",
-    f"{currency_symbol}{dcf_results['valuation_bridge']['Implied Share Price ($)']:.2f}",
+    currency_text(dcf_results["valuation_bridge"]["Implied Share Price ($)"]),
     f"{dcf_results['valuation_bridge']['Implied Upside / Downside (%)']:+.1f}%",
 )
 
@@ -490,24 +558,11 @@ with tab1:
     col_ov1, col_ov2 = st.columns([2, 1])
 
     with col_ov1:
-        st.write(info.get("longBusinessSummary", "Business summary unavailable."))
+        st.write(business_summary)
+        if not live_business_summary:
+            st.caption("Yahoo Finance did not provide a company description; this is the dashboard’s static overview.")
     with col_ov2:
-        st.markdown(
-            f"""
-            <div class='cgi-card'>
-            <h4 style="margin-top: 0; color: #5236AB; font-size: 1.05rem; border-bottom: 1px solid #ECE8F4; padding-bottom: 6px;">
-                📊 Client Quick Factsheet
-            </h4>
-                <b>Headquarters:</b> {html.escape(str(info.get('city') or 'Not reported'))}, {html.escape(str(info.get('country') or ''))}<br>
-            <b>Employees:</b> {f"{info['fullTimeEmployees']:,}" if info.get('fullTimeEmployees') else 'Not reported'}<br>
-            <b>Sector:</b> {html.escape(str(info.get('sector') or 'Not reported'))}<br>
-            <b>Industry:</b> {html.escape(str(info.get('industry') or 'Not reported'))}<br>
-            <b>52W Range:</b> {currency_symbol}{info.get('fiftyTwoWeekLow', 0) or 0:.2f} – {currency_symbol}{info.get('fiftyTwoWeekHigh', 0) or 0:.2f}<br>
-            <b>Consensus:</b> {html.escape(str(info.get('recommendationKey') or 'Not reported').upper())}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown(factsheet_html, unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("✨ Advanced AI Financial Analytics Summary")
