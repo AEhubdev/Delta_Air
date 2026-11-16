@@ -238,7 +238,8 @@ st.markdown(
     }
     .st-key-ai_chat_panel [data-testid="stVerticalBlock"] { gap: 0.45rem; }
     .st-key-ai_chat_history {
-        max-height: 390px;
+        min-height: min(48vh, 460px);
+        max-height: min(65vh, 650px);
         overflow-y: auto;
         border: 1px solid #E2E8F0;
         border-radius: 8px;
@@ -251,6 +252,10 @@ st.markdown(
             bottom: 4.8rem;
             width: calc(100vw - 1rem);
             max-height: calc(100vh - 6rem);
+        }
+        .st-key-ai_chat_history {
+            min-height: min(36vh, 300px);
+            max-height: min(52vh, 440px);
         }
     }
     </style>
