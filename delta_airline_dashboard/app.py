@@ -2,6 +2,7 @@ import html
 import inspect
 import json
 import os
+import re
 from email.message import EmailMessage
 from urllib.parse import quote
 
@@ -58,6 +59,42 @@ def build_email_eml(
     )
     message.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=filename)
     return message.as_bytes()
+
+
+def build_coordination_email(subject: str, body: str, recipient: str = "", cc: str = "") -> bytes:
+    """Build a plain email draft that preserves To, Cc, subject, and tab content."""
+    message = EmailMessage()
+    if recipient.strip():
+        message["To"] = recipient.strip()
+    if cc.strip():
+        message["Cc"] = cc.strip()
+    message["Subject"] = subject
+    message.set_content(body)
+    return message.as_bytes()
+
+
+def build_coordination_mailto_url(subject: str, body: str, recipient: str = "", cc: str = "") -> str:
+    """Create a mailto URL for the viewer's default email application."""
+    to_part = quote(recipient.strip(), safe="@,;")
+    query = [
+        f"subject={quote(subject)}",
+        f"body={quote(body)}",
+    ]
+    if cc.strip():
+        query.insert(0, f"cc={quote(cc.strip(), safe='@,;')}")
+    return f"mailto:{to_part}?{'&'.join(query)}"
+
+
+def get_department_cc_default() -> str:
+    """Read real department distribution lists from Streamlit secrets or the environment."""
+    configured = os.getenv("DEPARTMENT_CC_EMAILS", "")
+    try:
+        configured = st.secrets.get("DEPARTMENT_CC_EMAILS", configured)
+    except Exception:
+        pass
+    if isinstance(configured, (list, tuple)):
+        return ", ".join(str(address).strip() for address in configured if str(address).strip())
+    return str(configured or "").strip()
 
 
 def get_openai_settings():
@@ -569,11 +606,12 @@ if market_cap_basis:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-tab1, tab2, tab3 = st.tabs(
+tab1, tab2, tab3, tab4 = st.tabs(
     [
         "📊 Company Overview & Financials",
         "🛡️ Tab 2: Corporate Risk Mapping & Hedging Scheme Design",
         "🎯 Tab 3: DCF Valuation, Multiples & Client Export",
+        "🤝 Cross-Department Coordination",
     ]
 )
 
@@ -1139,6 +1177,133 @@ with tab3:
             "The email link opens a mail app on your device. To keep the report attached, "
             "download and open the .eml draft; or download the PDF and attach it to the email yourself."
         )
+
+
+# =============================================================================
+# TAB 4: CROSS-DEPARTMENT COORDINATION
+# =============================================================================
+with tab4:
+    if st.session_state.get("coordination_company") != ticker_symbol:
+        st.session_state["coordination_company"] = ticker_symbol
+        st.session_state.pop("coordination_comment", None)
+        st.session_state.pop("coordination_confirmed", None)
+
+    st.subheader("🤝 Cross-Department Review & Alignment")
+    st.write(
+        "Capture input from the teams supporting this client discussion. The generated draft includes the selected client, "
+        "team, contributor, comment, and confirmation status. It opens in the device's default email app; the app does not send it."
+    )
+
+    coordination_team = st.selectbox(
+        "Your team",
+        ["Legal", "Compliance", "IT", "Coverage", "PAM", "Sales Representative"],
+        key="coordination_team",
+    )
+    coordination_person = st.selectbox(
+        "Your name",
+        ["User 1", "User 2", "User 3"],
+        key="coordination_person",
+    )
+    coordination_comment = st.text_area(
+        "Comments for the other teams",
+        placeholder="Add your review, questions, dependencies, or follow-up actions…",
+        height=150,
+        key="coordination_comment",
+    )
+    coordination_confirmed = st.checkbox(
+        "Everything is good from my side",
+        key="coordination_confirmed",
+    )
+
+    department_cc_default = get_department_cc_default()
+    if "coordination_to" not in st.session_state:
+        st.session_state["coordination_to"] = recipient_email
+    if "coordination_cc" not in st.session_state or (
+        not str(st.session_state.get("coordination_cc", "")).strip() and department_cc_default
+    ):
+        st.session_state["coordination_cc"] = department_cc_default
+
+    with st.expander("Email routing", expanded=not bool(st.session_state.get("coordination_cc"))):
+        coordination_to = st.text_input(
+            "To (optional)",
+            placeholder="colleague@company.com",
+            key="coordination_to",
+        )
+        coordination_cc = st.text_input(
+            "All department distribution lists for CC (comma-separated)",
+            placeholder="legal-list@…, compliance-list@…, it-list@…, coverage-list@…, pam-list@…, sales-list@…",
+            help="Enter at least six real department addresses. Set DEPARTMENT_CC_EMAILS in Streamlit Secrets to prefill the list; the app does not invent internal addresses.",
+            key="coordination_cc",
+        )
+
+    cc_addresses = [address.strip() for address in re.split(r"[,;]", coordination_cc) if address.strip()]
+    cc_syntax_valid = bool(cc_addresses) and all(
+        re.fullmatch(r"[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+", address)
+        for address in cc_addresses
+    )
+    valid_cc_addresses = len(cc_addresses) >= 6 and cc_syntax_valid
+
+    if not coordination_cc.strip():
+        st.info(
+            "Add the six teams' real group addresses in Email routing or set `DEPARTMENT_CC_EMAILS` in Streamlit Secrets before generating the draft."
+        )
+    elif not cc_syntax_valid:
+        st.warning("One or more CC entries do not look like email addresses. Check the department list before generating the draft.")
+    elif len(cc_addresses) < 6:
+        st.warning("Enter at least six valid group addresses so Legal, Compliance, IT, Coverage, PAM, and Sales are all copied.")
+
+    confirmation_text = (
+        "Confirmed: everything is good from my side."
+        if coordination_confirmed
+        else "Not confirmed: follow-up or review is still needed."
+    )
+    comment_for_email = coordination_comment.strip() or "No comment provided."
+    coordination_subject = f"Cross-Department Review — {company_label} — {coordination_team}"
+    coordination_body = (
+        f"Hello all,\n\n"
+        f"Cross-department review for {company_label}\n\n"
+        f"Submitting team: {coordination_team}\n"
+        f"Contributor: {coordination_person}\n"
+        f"Client / company: {company_label}\n\n"
+        f"Comment and follow-up:\n{comment_for_email}\n\n"
+        f"Confirmation: {confirmation_text}\n\n"
+        "Please reply all with any questions or required actions.\n"
+    )
+
+    if valid_cc_addresses:
+        coordination_cc_header = ", ".join(cc_addresses)
+        coordination_mailto_url = build_coordination_mailto_url(
+            subject=coordination_subject,
+            body=coordination_body,
+            recipient=coordination_to,
+            cc=coordination_cc_header,
+        )
+        coordination_eml = build_coordination_email(
+            subject=coordination_subject,
+            body=coordination_body,
+            recipient=coordination_to,
+            cc=coordination_cc_header,
+        )
+        email_col, eml_col = st.columns(2)
+        with email_col:
+            st.link_button(
+                "📧 Open draft in default mail app",
+                coordination_mailto_url,
+                type="primary",
+                use_container_width=True,
+            )
+        with eml_col:
+            st.download_button(
+                "📨 Download draft (.eml)",
+                data=coordination_eml,
+                file_name=f"{ticker_symbol.replace('.', '_')}_Department_Review.eml",
+                mime="message/rfc822",
+                use_container_width=True,
+            )
+
+        with st.expander("Preview email"):
+            st.markdown(f"**To:** {html.escape(coordination_to or 'Not specified')}  \n**Cc:** {html.escape(coordination_cc_header)}  \n**Subject:** {html.escape(coordination_subject)}")
+            st.text(coordination_body)
 
 
 # =============================================================================
