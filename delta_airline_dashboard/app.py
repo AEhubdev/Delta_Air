@@ -1243,13 +1243,9 @@ with tab4:
     )
     valid_cc_addresses = len(cc_addresses) >= 6 and cc_syntax_valid
 
-    if not coordination_cc.strip():
-        st.info(
-            "Add the six teams' real group addresses in Email routing or set `DEPARTMENT_CC_EMAILS` in Streamlit Secrets before generating the draft."
-        )
-    elif not cc_syntax_valid:
+    if coordination_cc.strip() and not cc_syntax_valid:
         st.warning("One or more CC entries do not look like email addresses. Check the department list before generating the draft.")
-    elif len(cc_addresses) < 6:
+    elif coordination_cc.strip() and len(cc_addresses) < 6:
         st.warning("Enter at least six valid group addresses so Legal, Compliance, IT, Coverage, PAM, and Sales are all copied.")
 
     confirmation_text = (
@@ -1270,37 +1266,43 @@ with tab4:
         "Please reply all with any questions or required actions.\n"
     )
 
-    if valid_cc_addresses:
-        coordination_cc_header = ", ".join(cc_addresses)
-        coordination_mailto_url = build_coordination_mailto_url(
-            subject=coordination_subject,
-            body=coordination_body,
-            recipient=coordination_to,
-            cc=coordination_cc_header,
-        )
-        coordination_eml = build_coordination_email(
-            subject=coordination_subject,
-            body=coordination_body,
-            recipient=coordination_to,
-            cc=coordination_cc_header,
-        )
-        email_col, eml_col = st.columns(2)
-        with email_col:
-            st.link_button(
-                "📧 Open draft in default mail app",
-                coordination_mailto_url,
-                type="primary",
-                use_container_width=True,
-            )
-        with eml_col:
-            st.download_button(
-                "📨 Download draft (.eml)",
-                data=coordination_eml,
-                file_name=f"{ticker_symbol.replace('.', '_')}_Department_Review.eml",
-                mime="message/rfc822",
-                use_container_width=True,
-            )
+    coordination_cc_header = ", ".join(cc_addresses)
+    coordination_mailto_url = build_coordination_mailto_url(
+        subject=coordination_subject,
+        body=coordination_body,
+        recipient=coordination_to,
+        cc=coordination_cc_header,
+    )
+    coordination_eml = build_coordination_email(
+        subject=coordination_subject,
+        body=coordination_body,
+        recipient=coordination_to,
+        cc=coordination_cc_header,
+    )
 
+    st.markdown("---")
+    st.subheader("Email draft")
+    email_col, eml_col = st.columns(2)
+    with email_col:
+        st.link_button(
+            "📧 Generate email draft and open default mail app",
+            coordination_mailto_url,
+            type="primary",
+            disabled=not valid_cc_addresses,
+            help=None if valid_cc_addresses else "Add all six department email addresses in Email routing.",
+            use_container_width=True,
+        )
+    with eml_col:
+        st.download_button(
+            "📨 Download draft (.eml)",
+            data=coordination_eml,
+            file_name=f"{ticker_symbol.replace('.', '_')}_Department_Review.eml",
+            mime="message/rfc822",
+            disabled=not valid_cc_addresses,
+            use_container_width=True,
+        )
+
+    if valid_cc_addresses:
         with st.expander("Preview email"):
             st.markdown(f"**To:** {html.escape(coordination_to or 'Not specified')}  \n**Cc:** {html.escape(coordination_cc_header)}  \n**Subject:** {html.escape(coordination_subject)}")
             st.text(coordination_body)
