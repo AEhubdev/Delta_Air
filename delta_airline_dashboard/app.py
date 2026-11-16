@@ -1,4 +1,5 @@
 import html
+import inspect
 import json
 import os
 from email.message import EmailMessage
@@ -17,7 +18,12 @@ from data_engine import (
     extract_valuation_multiples,
     run_dcf_model,
 )
-from pdf_generator import generate_custom_client_pdf, generate_executive_pdf
+from pdf_generator import generate_executive_pdf
+try:
+    from pdf_generator import generate_custom_client_pdf as _generate_custom_client_pdf
+except ImportError:
+    # Older Streamlit deployments may have the previous pdf_generator.py revision.
+    _generate_custom_client_pdf = None
 
 
 def build_mailto_url(recipient: str, company_name: str, summary_highlights: str) -> str:
@@ -64,6 +70,86 @@ def get_openai_settings():
         # Streamlit secrets are optional; PyCharm environment variables also work.
         pass
     return api_key, model
+
+
+def generate_executive_pdf_compat(**report_args):
+    """Pass the fields supported by the deployed PDF module; fold new content into legacy reports."""
+    parameters = inspect.signature(generate_executive_pdf).parameters
+    accepts_extra = any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values())
+    supported = set(parameters)
+    summary = report_args.get("executive_summary", "")
+    recommendations = list(report_args.get("hedging_recommendations", []))
+
+    for argument, heading in (
+        ("ai_financial_summary", "AI Financial Analytics"),
+        ("ai_news_summary", "AI Recent News Analysis"),
+    ):
+        content = report_args.get(argument, "")
+        if content and argument not in supported and not accepts_extra:
+            recommendations.append({"title": heading, "detail": content})
+
+    assumptions = report_args.get("dcf_assumptions") or {}
+    if assumptions and "dcf_assumptions" not in supported and not accepts_extra:
+        recommendations.append({
+            "title": "DCF Scenario Assumptions",
+            "detail": " | ".join(f"{name}: {value}" for name, value in assumptions.items()),
+        })
+
+    if report_args.get("company_news") and "company_news" not in supported and not accepts_extra:
+        recommendations.extend(
+            {
+                "title": f"News: {article.get('title') or 'Recent company article'}",
+                "detail": " | ".join(filter(None, [
+                    str(article.get("publisher") or ""),
+                    str(article.get("published_display") or ""),
+                    str(article.get("url") or ""),
+                ])),
+            }
+            for article in report_args["company_news"][:6]
+        )
+
+    report_args["executive_summary"] = summary
+    report_args["hedging_recommendations"] = recommendations
+    if accepts_extra:
+        return generate_executive_pdf(**report_args)
+    return generate_executive_pdf(**{
+        name: value for name, value in report_args.items() if name in supported
+    })
+
+
+def generate_custom_client_pdf_compat(**report_args):
+    """Use the tailored report generator when deployed, otherwise build a client-focused legacy PDF."""
+    if callable(_generate_custom_client_pdf):
+        parameters = inspect.signature(_generate_custom_client_pdf).parameters
+        accepts_extra = any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values())
+        supported = set(parameters)
+        if accepts_extra:
+            return _generate_custom_client_pdf(**report_args)
+        return _generate_custom_client_pdf(**{
+            name: value for name, value in report_args.items() if name in supported
+        })
+
+    client_summary = (
+        f"Custom client meeting brief for {report_args['company_name']}. "
+        f"{report_args.get('executive_summary', '')}"
+    )
+    return generate_executive_pdf_compat(
+        data=report_args["data"],
+        fin_df=report_args["fin_df"],
+        multiples=report_args["multiples"],
+        dcf_results=report_args["dcf_results"],
+        executive_summary=client_summary,
+        hedging_recommendations=report_args.get("discussion_points", []),
+        currency_symbol=report_args["currency_symbol"],
+        currency_code=report_args["currency_code"],
+        company_name=report_args["company_name"],
+        exclude_years=report_args.get("exclude_years", ()),
+        ai_financial_summary=report_args.get("ai_financial_summary", ""),
+        ai_news_summary=report_args.get("ai_news_summary", ""),
+        company_news=report_args.get("company_news", []),
+        dcf_assumptions=report_args.get("dcf_assumptions", {}),
+        data_timestamp=report_args.get("data_timestamp", "Not available"),
+    )
 
 st.set_page_config(
     page_title="CGI Client Advisory Dashboard",
@@ -875,7 +961,7 @@ with tab3:
     if not ai_financial_summary or (company_news and not ai_news_summary):
         st.info("For the full AI-enhanced PDF, generate the financial and recent news summaries in Tab 1 before downloading.")
 
-    pdf_bytes = generate_executive_pdf(
+    pdf_bytes = generate_executive_pdf_compat(
         data=raw_data,
         fin_df=fin_df,
         multiples=multiples,
@@ -892,7 +978,8 @@ with tab3:
         dcf_assumptions=dcf_assumptions,
         data_timestamp=raw_data.get("fetched_at", "Not available"),
     )
-    custom_client_pdf_bytes = generate_custom_client_pdf(
+    custom_client_pdf_bytes = generate_custom_client_pdf_compat(
+        data=raw_data,
         company_name=company_label,
         sector=info.get("sector") or "Not reported",
         industry=info.get("industry") or "Not reported",
@@ -908,6 +995,7 @@ with tab3:
         currency_symbol=currency_symbol,
         currency_code=currency_code,
         data_timestamp=raw_data.get("fetched_at", "Not available"),
+        exclude_years=company_config["exclude_years"],
     )
 
     exp_col1, exp_col2 = st.columns(2)
