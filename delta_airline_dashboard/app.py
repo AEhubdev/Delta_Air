@@ -362,8 +362,20 @@ st.markdown(
 )
 
 
+DATA_CACHE_VERSION = "market-cap-and-company-profile-fallback-v2"
+
+
 @st.cache_data(ttl=3600, show_spinner="Fetching live company and benchmark data...")
-def load_all_data(ticker: str, benchmarks: tuple[str, ...], currency: str, exclude_years: tuple[str, ...]):
+def load_all_data(
+    ticker: str,
+    benchmarks: tuple[str, ...],
+    currency: str,
+    exclude_years: tuple[str, ...],
+    cache_version: str,
+):
+    # Imported data_engine changes are not always enough to invalidate this
+    # Streamlit cache, so include a manually bumped revision in the cache key.
+    _ = cache_version
     raw = fetch_company_data(ticker, benchmarks, currency)
     fin_df = extract_financial_summary(raw, exclude_years=exclude_years)
     multiples = extract_valuation_multiples(raw, fin_df)
@@ -408,6 +420,7 @@ try:
         tuple(company_config["benchmarks"]),
         currency_code,
         tuple(company_config["exclude_years"]),
+        DATA_CACHE_VERSION,
     )
 except Exception as exc:
     st.error(f"Error retrieving data for {selected_company}: {exc}")
