@@ -17,7 +17,7 @@ from data_engine import (
     extract_valuation_multiples,
     run_dcf_model,
 )
-from pdf_generator import generate_executive_pdf
+from pdf_generator import generate_custom_client_pdf, generate_executive_pdf
 
 
 def build_mailto_url(recipient: str, company_name: str, summary_highlights: str) -> str:
@@ -892,6 +892,23 @@ with tab3:
         dcf_assumptions=dcf_assumptions,
         data_timestamp=raw_data.get("fetched_at", "Not available"),
     )
+    custom_client_pdf_bytes = generate_custom_client_pdf(
+        company_name=company_label,
+        sector=info.get("sector") or "Not reported",
+        industry=info.get("industry") or "Not reported",
+        fin_df=fin_df,
+        multiples=multiples,
+        dcf_results=dcf_results,
+        executive_summary=exec_summary_text,
+        ai_financial_summary=ai_financial_summary,
+        ai_news_summary=ai_news_summary,
+        company_news=company_news,
+        discussion_points=hedging_recs,
+        dcf_assumptions=dcf_assumptions,
+        currency_symbol=currency_symbol,
+        currency_code=currency_code,
+        data_timestamp=raw_data.get("fetched_at", "Not available"),
+    )
 
     exp_col1, exp_col2 = st.columns(2)
 
@@ -925,6 +942,14 @@ with tab3:
             mime="application/pdf",
             use_container_width=True,
         )
+        st.download_button(
+            label="📄 Download Custom Client Report",
+            data=custom_client_pdf_bytes,
+            file_name=f"{ticker_symbol.replace('.', '_')}_Custom_Client_Report.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+        st.caption("Client-focused meeting brief tailored to the selected company.")
 
     with exp_col2:
         st.link_button(
