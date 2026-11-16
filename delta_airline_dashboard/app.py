@@ -53,6 +53,18 @@ def build_email_eml(
     message.add_attachment(pdf_bytes, maintype="application", subtype="pdf", filename=filename)
     return message.as_bytes()
 
+
+def get_openai_settings():
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
+    try:
+        api_key = st.secrets.get("OPENAI_API_KEY", api_key)
+        model = st.secrets.get("OPENAI_MODEL", model)
+    except Exception:
+        # Streamlit secrets are optional; PyCharm environment variables also work.
+        pass
+    return api_key, model
+
 st.set_page_config(
     page_title="CGI Client Advisory Dashboard",
     page_icon="💼",
@@ -411,6 +423,110 @@ with tab1:
             unsafe_allow_html=True,
         )
 
+    st.markdown("---")
+    st.subheader("✨ Advanced AI Financial Analytics Summary")
+    st.caption(
+        "On-demand analysis of reported financials, trading multiples, and the current DCF scenario. "
+        "The AI uses this dashboard snapshot and does not add client-specific exposure data."
+    )
+
+    analytics_periods = []
+    for period_index, period_row in fin_df.reset_index(drop=True).iterrows():
+        previous_period = fin_df.iloc[period_index - 1] if period_index > 0 else None
+        revenue = float(period_row["Revenue ($B)"])
+        ebitda = float(period_row["EBITDA ($B)"])
+        free_cash_flow = float(period_row["Free Cash Flow ($B)"])
+        analytics_periods.append({
+            "period": str(period_row["Year"]),
+            "revenue_billions": round(revenue, 2),
+            "revenue_growth_percent_vs_previous_period": round(
+                (revenue / float(previous_period["Revenue ($B)"]) - 1) * 100, 1
+            ) if previous_period is not None and float(previous_period["Revenue ($B)"]) > 0 else None,
+            "ebitda_billions": round(ebitda, 2),
+            "ebitda_margin_percent": round(float(period_row["EBITDA Margin (%)"]), 1),
+            "operating_margin_percent": round(float(period_row["Operating Margin (%)"]), 1),
+            "free_cash_flow_billions": round(free_cash_flow, 2),
+            "free_cash_flow_to_ebitda_percent": round(free_cash_flow / ebitda * 100, 1) if ebitda > 0 else None,
+            "net_debt_billions": round(float(period_row["Net Debt ($B)"]), 2),
+            "net_debt_to_ebitda": round(float(period_row["Net Debt / EBITDA (x)"]), 2),
+        })
+
+    analytics_context = {
+        "company": company_label,
+        "industry": info.get("industry"),
+        "reporting_currency": currency_code,
+        "financial_data_source": "Yahoo Finance via yfinance; values may be incomplete or delayed.",
+        "data_timestamp": raw_data.get("fetched_at"),
+        "historical_financial_periods": analytics_periods,
+        "market_valuation": {
+            key: value for key, value in multiples.items()
+        },
+        "dcf_scenario": {
+            "assumptions": {
+                "revenue_growth_percent": round(rev_growth * 100, 2),
+                "target_ebit_margin_percent": round(ebit_margin * 100, 2),
+                "tax_rate_percent": round(tax_rate * 100, 2),
+                "capex_percent_of_revenue": round(capex_pct * 100, 2),
+                "risk_free_rate_percent": round(rf_rate * 100, 2),
+                "equity_risk_premium_percent": round(erp * 100, 2),
+                "terminal_growth_percent": round(tgr * 100, 2),
+            },
+            "valuation_bridge": dcf_results["valuation_bridge"],
+            "wacc_percent": dcf_results["wacc_details"]["Calculated WACC (%)"],
+        },
+    }
+    analytics_key = json.dumps({
+        "ticker": ticker_symbol,
+        "data_timestamp": raw_data.get("fetched_at"),
+        "assumptions": analytics_context["dcf_scenario"]["assumptions"],
+    }, sort_keys=True)
+    saved_analytics = st.session_state.get("ai_financial_analytics", {})
+    generate_label = "🔄 Refresh AI financial analytics" if analytics_key in saved_analytics else "✨ Generate AI financial analytics"
+
+    if st.button(generate_label, key=f"generate_financial_analytics_{ticker_symbol}", type="primary"):
+        api_key, model_name = get_openai_settings()
+        if not api_key:
+            st.warning("Set `OPENAI_API_KEY` in Streamlit Secrets to generate the AI financial analysis.")
+        else:
+            instructions = (
+                "You are a senior financial analyst preparing an evidence-based client-call briefing. "
+                "Use only the supplied dashboard JSON. Explain trends across periods, profitability and cash conversion, leverage, "
+                "trading multiples, and what the DCF scenario implies under its stated assumptions. Clearly distinguish reported data, "
+                "calculated ratios, and scenario outputs. Do not claim why a metric changed unless the supplied data establishes a cause. "
+                "Call out missing or limited data. Never invent facts, client exposures, or products, and do not give investment advice. "
+                "Return concise Markdown with headings: Executive readout; Performance and cash generation; Leverage and valuation; "
+                "Three questions to validate on the client call; Data caveats."
+            )
+            try:
+                from openai import OpenAI
+
+                client = OpenAI(api_key=api_key, timeout=45.0, max_retries=1)
+                with st.spinner("Analyzing the selected company’s financial trends and valuation…"):
+                    response = client.responses.create(
+                        model=model_name,
+                        instructions=instructions,
+                        input="Dashboard financial analytics (JSON):\n" + json.dumps(
+                            analytics_context, ensure_ascii=False, default=str
+                        ),
+                        max_output_tokens=900,
+                        store=False,
+                    )
+                analysis = response.output_text.strip()
+                if analysis:
+                    saved_analytics[analytics_key] = analysis
+                    st.session_state["ai_financial_analytics"] = saved_analytics
+                else:
+                    st.error("The AI service returned an empty analysis. Please try again.")
+            except Exception:
+                st.error("AI financial analysis failed. Check the API key, selected model, and server connection, then try again.")
+
+    saved_analytics = st.session_state.get("ai_financial_analytics", {})
+    if analytics_key in saved_analytics:
+        st.markdown(saved_analytics[analytics_key])
+        st.caption(f"AI-generated from dashboard data updated {raw_data.get('fetched_at')}; verify figures before client use.")
+    else:
+        st.info("Generate an analysis to review financial trends, cash generation, leverage, valuation signals, and client-call questions.")
+
     st.subheader(f"2. Relative Market Performance ({company_label} vs. {', '.join(company_config['benchmark_names'])})")
     bench_df = raw_data["benchmarks"].dropna()
     if not bench_df.empty:
@@ -733,18 +849,6 @@ if st.session_state.get("ai_chat_company") != ticker_symbol:
 
 if "ai_chat_open" not in st.session_state:
     st.session_state["ai_chat_open"] = False
-
-
-def get_openai_settings():
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    model = os.getenv("OPENAI_MODEL", "gpt-6-luna")
-    try:
-        api_key = st.secrets.get("OPENAI_API_KEY", api_key)
-        model = st.secrets.get("OPENAI_MODEL", model)
-    except Exception:
-        # Streamlit secrets are optional; PyCharm environment variables also work.
-        pass
-    return api_key, model
 
 
 latest_chat_fin = fin_df.iloc[-1] if not fin_df.empty else None
