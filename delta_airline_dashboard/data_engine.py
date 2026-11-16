@@ -14,42 +14,52 @@ COMPANIES = {
         "benchmarks": ("^GSPC", "JETS"), "benchmark_names": ("S&P 500", "U.S. Airlines ETF"),
         "risk_profile": "airlines", "exclude_years": ("2021",),
         "sector": "Industrials", "industry": "Airlines",
-        "overview": "Delta Air Lines is a U.S.-based passenger airline. Use this dashboard to prepare a client discussion on its financial performance, market position, and exposure to fuel, currency, and interest-rate movements.",
+        "overview": "Delta Air Lines operates a global passenger airline and cargo network, with revenue and costs shaped by travel demand, fuel prices, labor, aircraft investment, and foreign exchange. This profile supports discussion of cash generation, leverage, fleet plans, and financial risk priorities.",
+        "fallback_shares": 648_000_000, "shares_as_of": "FY2025 basic weighted-average shares",
+        "shares_source": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-December-Quarter-and-Full-Year-2025-Financial-Results/default.aspx",
     },
     "adidas AG (ADS.DE)": {
         "ticker": "ADS.DE", "currency": "EUR", "currency_symbol": "€",
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "consumer_apparel", "exclude_years": (),
         "sector": "Consumer Cyclical", "industry": "Apparel and Sporting Goods",
-        "overview": "adidas is a global sportswear and sporting-goods company. This dashboard supports discussion of its financial performance, market position, and exposure to consumer demand, sourcing, and foreign exchange.",
+        "overview": "adidas designs, develops, and markets footwear, apparel, accessories, and sporting goods under the adidas brand. Its performance is affected by consumer demand, product launches, inventory and discounting, sourcing and logistics, and foreign-exchange movements.",
+        "fallback_shares": 178_665_018, "shares_as_of": "2025-12-31 outstanding shares",
+        "shares_source": "https://report.adidas-group.com/2025/en/group-management-report-financial-review/business-performance/income-statement.html",
     },
     "Deutsche Lufthansa AG (LHA.DE)": {
         "ticker": "LHA.DE", "currency": "EUR", "currency_symbol": "€",
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "airlines", "exclude_years": (),
         "sector": "Industrials", "industry": "Airlines and Aviation Services",
-        "overview": "Deutsche Lufthansa AG is an airline and aviation-services group. This dashboard supports discussion of its financial performance, market position, and exposure to fuel, currency, and interest-rate movements.",
+        "overview": "Deutsche Lufthansa AG operates passenger airlines and aviation-related services. Its performance is affected by travel and cargo demand, fuel and labor costs, fleet investment, foreign exchange, and financing needs.",
     },
     "BMW AG (BMW.DE)": {
         "ticker": "BMW.DE", "currency": "EUR", "currency_symbol": "€",
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "automotive", "exclude_years": (),
         "sector": "Consumer Cyclical", "industry": "Automobiles",
-        "overview": "BMW AG is an automotive manufacturer. This dashboard supports discussion of its financial performance, market position, and exposure to consumer demand, supply chains, and foreign exchange.",
+        "overview": "BMW Group develops and manufactures premium vehicles and mobility services. Its results are shaped by vehicle demand and mix, electrification investment, supply chains, customer financing, and currency movements.",
+        "fallback_shares": 591_133_711, "shares_as_of": "2026-09-30 estimated shares outstanding (issued less treasury shares)",
+        "shares_source": "https://www.bmwgroup.com/content/dam/grpw/websites/bmwgroup_com/ir/downloads/en/2026/q3/BMW_Q3-2026-EN.pdf",
     },
     "Siemens AG (SIE.DE)": {
         "ticker": "SIE.DE", "currency": "EUR", "currency_symbol": "€",
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "industrials", "exclude_years": (),
         "sector": "Industrials", "industry": "Industrial Technology",
-        "overview": "Siemens AG is an industrial technology company. This dashboard supports discussion of its financial performance, market position, and exposure to industrial investment, project delivery, and foreign exchange.",
+        "overview": "Siemens AG provides industrial automation and software, smart infrastructure, mobility systems, and related financial services. Its results are influenced by industrial investment, project execution, order conversion, and foreign exchange.",
+        "fallback_shares": 782_000_000, "shares_as_of": "2026-03-03 issued shares",
+        "shares_source": "https://www.siemens.com/en-us/company/investor-relations/faq/",
     },
     "SAP SE (SAP.DE)": {
         "ticker": "SAP.DE", "currency": "EUR", "currency_symbol": "€",
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "software", "exclude_years": (),
         "sector": "Technology", "industry": "Enterprise Software",
-        "overview": "SAP SE develops enterprise software. This dashboard supports discussion of its financial performance, market position, and exposure to software demand, cloud adoption, and foreign exchange.",
+        "overview": "SAP SE provides enterprise applications and cloud software for finance, procurement, supply chain, human resources, and other business processes. Its performance is affected by recurring cloud adoption, customer demand, implementation delivery, and foreign exchange.",
+        "fallback_shares": 1_228_504_232, "shares_as_of": "2025-12-31 shares outstanding",
+        "shares_source": "https://www.sap.com/investors/en/stock/basic-data.html",
     },
 }
 
@@ -269,6 +279,68 @@ def fetch_company_data(
         quarterly_balance_sheet = quarterly_balance_sheet.iloc[:, ::-1]
     if not quarterly_cash_flow.empty:
         quarterly_cash_flow = quarterly_cash_flow.iloc[:, ::-1]
+
+    selected_config = next(
+        (item for item in COMPANIES.values() if item.get("ticker") == ticker_symbol),
+        {},
+    )
+    share_count = _safe_info_number(info, "sharesOutstanding") or _safe_info_number(fast_info, "shares")
+    share_count_basis = "Yahoo Finance share-count data"
+    if share_count <= 0:
+        # Try Yahoo's share-count time series explicitly. fast_info also reads
+        # this endpoint, but an independent attempt helps when one lazy field
+        # failed while the rest of the quote data remained usable.
+        try:
+            share_history = ticker.get_shares_full(
+                start=(datetime.now(timezone.utc) - timedelta(days=548)).date()
+            )
+            if isinstance(share_history, pd.DataFrame) and not share_history.empty:
+                share_history = share_history.iloc[:, 0]
+            if share_history is not None and not share_history.empty:
+                share_values = pd.to_numeric(share_history, errors="coerce").dropna()
+                if not share_values.empty and float(share_values.iloc[-1]) > 0:
+                    share_count = float(share_values.iloc[-1])
+                    share_date = share_values.index[-1]
+                    if hasattr(share_date, "strftime"):
+                        share_count_basis = f"Yahoo Finance share-count data as of {share_date.strftime('%Y-%m-%d')}"
+        except Exception:
+            pass
+
+    if share_count <= 0 and not balance_sheet.empty:
+        share_count = float(_safe_get(
+            balance_sheet,
+            ["Ordinary Shares Number", "Share Issued", "Shares Issued", "Common Stock Shares Outstanding", "Common Shares Outstanding"],
+            list(balance_sheet.columns[-1:]),
+        ).sum())
+        if share_count > 0:
+            share_count_basis = "latest annual balance-sheet share count"
+
+    if share_count <= 0 and selected_config.get("fallback_shares"):
+        share_count = float(selected_config["fallback_shares"])
+        share_count_basis = selected_config.get("shares_as_of", "latest company-published share count")
+
+    if share_count > 0 and not _safe_info_number(info, "sharesOutstanding"):
+        info["sharesOutstanding"] = share_count
+
+    existing_market_cap = _safe_info_number(info, "marketCap") or _safe_info_number(fast_info, "market_cap")
+    if existing_market_cap > 0:
+        info["marketCap"] = existing_market_cap
+        market_cap_basis = "Yahoo Finance reported market capitalization"
+    elif share_count > 0 and _safe_info_number(info, "currentPrice", "regularMarketPrice") > 0:
+        info["marketCap"] = share_count * _safe_info_number(info, "currentPrice", "regularMarketPrice")
+        market_cap_basis = f"Estimated from the live share price × {share_count_basis}."
+    else:
+        market_cap_basis = "Yahoo Finance did not return market capitalization or a usable share count."
+
+    # Use the loaded history as a backup for the 52-week range when the quote
+    # profile and fast quote endpoint are unavailable.
+    if not hist.empty and "Close" in hist:
+        year_prices = pd.to_numeric(hist["Close"], errors="coerce").dropna().tail(252)
+        if not _safe_info_number(info, "fiftyTwoWeekHigh") and not year_prices.empty:
+            info["fiftyTwoWeekHigh"] = float(year_prices.max())
+        if not _safe_info_number(info, "fiftyTwoWeekLow") and not year_prices.empty:
+            info["fiftyTwoWeekLow"] = float(year_prices.min())
+
     if income_stmt.empty:
         warnings.append("Annual income statement was not returned; using trailing-twelve-month quote or quarterly data when available.")
     elif not has_annual_revenue:
@@ -309,11 +381,21 @@ def fetch_company_data(
     if missing_symbols:
         warnings.append(f"No market chart data was returned for: {', '.join(missing_symbols)}.")
 
+    if share_count_basis.startswith("Yahoo Finance"):
+        shares_source_url = f"https://finance.yahoo.com/quote/{ticker_symbol}/"
+    elif "balance-sheet" in share_count_basis:
+        shares_source_url = f"https://finance.yahoo.com/quote/{ticker_symbol}/balance-sheet/"
+    else:
+        shares_source_url = selected_config.get("shares_source", "")
+
     return {
         "ticker": ticker_symbol,
         "currency": info.get("currency") or currency,
         "info": info,
         "fast_info": fast_info,
+        "market_cap_basis": market_cap_basis,
+        "share_count_basis": share_count_basis,
+        "shares_source_url": shares_source_url,
         "history": hist,
         "news": news,
         "income_stmt": income_stmt,
@@ -583,7 +665,16 @@ def extract_valuation_multiples(data: dict, fin_df: pd.DataFrame) -> dict:
     latest_ebitda = (latest["EBITDA ($B)"] * 1e9) if latest is not None else 0.0
     latest_fcf = (latest["Free Cash Flow ($B)"] * 1e9) if latest is not None else 0.0
     net_debt = (latest["Net Debt ($B)"] * 1e9) if latest is not None else 0.0
-    ev = _safe_info_number(info, "enterpriseValue") or (mkt_cap + net_debt)
+    reported_ev = _safe_info_number(info, "enterpriseValue")
+    if mkt_cap <= 0 and reported_ev > 0 and latest is not None:
+        has_balance_inputs = (
+            _safe_info_number(info, "totalDebt", "totalCash") > 0
+            or float(latest.get("Total Debt ($B)", 0) or 0) != 0
+            or float(latest.get("Cash & Equivalents ($B)", 0) or 0) != 0
+        )
+        if has_balance_inputs and reported_ev - net_debt > 0:
+            mkt_cap = reported_ev - net_debt
+    ev = reported_ev or (mkt_cap + net_debt if mkt_cap > 0 else 0.0)
     latest_net_income = (latest["Net Income ($B)"] * 1e9) if latest is not None else 0.0
     latest_equity = (latest["Total Equity ($B)"] * 1e9) if latest is not None else 0.0
 

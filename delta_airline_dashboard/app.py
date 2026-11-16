@@ -488,6 +488,13 @@ if fin_df.empty or float(fin_df.iloc[-1]["Revenue ($B)"]) <= 0:
     quote_cols[0].metric("Share Price", currency_text(multiples["Current Share Price ($)"]))
     quote_cols[1].metric("Market Cap", currency_text(multiples["Market Cap ($B)"], "B"))
     quote_cols[2].metric("Enterprise Value", currency_text(multiples["Enterprise Value ($B)"], "B"))
+    market_cap_basis = raw_data.get("market_cap_basis", "")
+    if market_cap_basis:
+        source_url = raw_data.get("shares_source_url", "")
+        if source_url and market_cap_basis.startswith("Estimated"):
+            st.markdown(f"_{market_cap_basis} [Share-count source]({source_url})_")
+        else:
+            st.caption(market_cap_basis)
     st.stop()
 
 if str(fin_df.iloc[-1]["Year"]).upper() == "TTM":
@@ -539,6 +546,13 @@ k6.metric(
     currency_text(dcf_results["valuation_bridge"]["Implied Share Price ($)"]),
     f"{dcf_results['valuation_bridge']['Implied Upside / Downside (%)']:+.1f}%",
 )
+market_cap_basis = raw_data.get("market_cap_basis", "")
+if market_cap_basis:
+    source_url = raw_data.get("shares_source_url", "")
+    if source_url and market_cap_basis.startswith("Estimated"):
+        st.markdown(f"_{market_cap_basis} [Share-count source]({source_url})_")
+    else:
+        st.caption(market_cap_basis)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
