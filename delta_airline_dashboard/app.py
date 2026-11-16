@@ -226,7 +226,9 @@ st.markdown(
         right: 1.25rem;
         bottom: 5.2rem;
         z-index: 9999;
-        width: min(410px, calc(100vw - 2rem));
+        width: min(520px, calc(100vw - 2rem));
+        max-height: calc(100vh - 7rem);
+        overflow-y: auto;
         background: #FFFFFF;
         border: 1px solid #D8D4E5;
         border-top: 4px solid #E31937;
@@ -236,7 +238,7 @@ st.markdown(
     }
     .st-key-ai_chat_panel [data-testid="stVerticalBlock"] { gap: 0.45rem; }
     .st-key-ai_chat_history {
-        max-height: 285px;
+        max-height: 390px;
         overflow-y: auto;
         border: 1px solid #E2E8F0;
         border-radius: 8px;
@@ -244,7 +246,12 @@ st.markdown(
     }
     @media (max-width: 540px) {
         .st-key-ai_chat_launcher { right: 0.65rem; bottom: 0.65rem; }
-        .st-key-ai_chat_panel { right: 0.5rem; bottom: 4.8rem; width: calc(100vw - 1rem); }
+        .st-key-ai_chat_panel {
+            right: 0.5rem;
+            bottom: 4.8rem;
+            width: calc(100vw - 1rem);
+            max-height: calc(100vh - 6rem);
+        }
     }
     </style>
     """,
