@@ -585,15 +585,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    [
-        "📊 Financials & Company Overview",
-        "🛡️ Risk & Hedging",
-        "🎯 Valuation & Client Export",
-        "🤝 Cross-Department Coordination",
-    ]
-)
-
 k1, k2, k3, k4, k5, k6 = st.columns(6)
 k1.metric("Share Price", currency_text(multiples["Current Share Price ($)"]))
 k2.metric("Market Cap", currency_text(multiples["Market Cap ($B)"], "B"))
@@ -614,6 +605,15 @@ if market_cap_basis:
         st.caption(market_cap_basis)
 
 st.markdown("<br>", unsafe_allow_html=True)
+
+tab1, tab2, tab3, tab4 = st.tabs(
+    [
+        "📊 Financials & Company Overview",
+        "🛡️ Risk & Hedging",
+        "🎯 Valuation & Client Export",
+        "🤝 Cross-Department Coordination",
+    ]
+)
 
 # =============================================================================
 # TAB 1: COMPANY OVERVIEW & FINANCIALS
