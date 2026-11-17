@@ -1178,6 +1178,12 @@ with tab3:
             "download and open the .eml draft; or download the PDF and attach it to the email yourself."
         )
 
+    st.button(
+        "☁️ Save on SharePoint",
+        key="sharepoint_export_placeholder",
+        use_container_width=True,
+    )
+
 
 # =============================================================================
 # TAB 4: CROSS-DEPARTMENT COORDINATION
