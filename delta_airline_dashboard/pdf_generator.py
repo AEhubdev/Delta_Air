@@ -104,7 +104,7 @@ def generate_executive_pdf(
     report_company = company_name or info.get("longName", "Selected company")
     excluded_note = f" | Excluded years: {', '.join(exclude_years)}" if exclude_years else ""
 
-    elements.append(Paragraph("CGI ADVISORY - CORPORATE RISK MAPPING & HEDGING BRIEFING", subtitle_style))
+    elements.append(Paragraph("ADVISORY - CORPORATE RISK MAPPING & HEDGING BRIEFING", subtitle_style))
     elements.append(Paragraph(escape(pdf_text(report_company)), title_style))
     elements.append(Paragraph(
         f"Sector: {escape(pdf_text(info.get('sector') or 'Not reported'))} | Industry: {escape(pdf_text(info.get('industry') or 'Not reported'))}"
@@ -273,7 +273,7 @@ def generate_executive_pdf(
 
     elements.append(Spacer(1, 10))
     elements.append(HRFlowable(width="100%", thickness=0.6, color=muted_text, spaceAfter=4))
-    elements.append(Paragraph("Confidential - Prepared for CGI Client Engagement & Meeting Preparation.", subtitle_style))
+    elements.append(Paragraph("Confidential - Prepared for Client Engagement & Meeting Preparation.", subtitle_style))
 
     doc.build(elements)
     return buffer.getvalue()

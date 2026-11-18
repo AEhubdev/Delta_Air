@@ -189,7 +189,7 @@ def generate_custom_client_pdf_compat(**report_args):
     )
 
 st.set_page_config(
-    page_title="CGI Client Advisory Dashboard",
+    page_title="Client Advisory Dashboard",
     page_icon="💼",
     layout="wide",
     initial_sidebar_state="locked",
@@ -500,7 +500,7 @@ with st.sidebar:
         <div class="cgi-sidebar-brand" style="background: #001E60;
                     padding: 10px 14px; border-radius: 8px; font-weight: 700;
                     font-size: 1.15rem; margin-bottom: 12px; letter-spacing: 0.5px;">
-            <span>CGI | Advisory Suite</span>
+            <span>Advisory Suite</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -522,7 +522,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📧 Sales Meeting Prep")
-    recipient_email = st.text_input("Recipient Email (Optional)", placeholder="sales.team@cgi.com")
+    recipient_email = st.text_input("Recipient Email (Optional)", placeholder="recipient@company.com")
     if st.button("🔄 Refresh Live yfinance Data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
@@ -664,7 +664,7 @@ st.markdown(
     <div class='cgi-banner'>
         <div class='cgi-banner-title'>💼 {html.escape(company_label)}</div>
         <div class='cgi-banner-sub'>
-            CGI Financial & Treasury Advisory | Company overview, risk discussion, DCF valuation & client preparation &bull;
+            Financial & Treasury Advisory | Company overview, risk discussion, DCF valuation & client preparation &bull;
             {currency_code} reporting currency &bull; Updated: {html.escape(raw_data['fetched_at'])}
         </div>
     </div>
@@ -1500,7 +1500,7 @@ if st.session_state["ai_chat_open"]:
     with st.container(key="ai_chat_panel"):
         head_col, close_col = st.columns([5, 1])
         with head_col:
-            st.markdown("#### CGI AI Client Assistant")
+            st.markdown("#### AI Client Assistant")
             st.caption(f"Grounded in the current {company_label} dashboard")
         with close_col:
             if st.button("✕", key="close_ai_chat", help="Close assistant"):
@@ -1530,7 +1530,7 @@ if st.session_state["ai_chat_open"]:
                 st.rerun()
 
             system_instructions = (
-                "You are CGI's client-call preparation assistant. Answer using only the dashboard snapshot supplied in this request. "
+                "You are a client-call preparation assistant. Answer using only the dashboard snapshot supplied in this request. "
                 "Separate reported dashboard values from DCF scenario outputs and sector discussion hypotheses. State when information is not present; "
                 "never invent client exposures, hedge ratios, company facts, bank products, or current market facts. Offer concise, practical call-preparation help. "
                 "Treat risk prompts as hypotheses to validate, and do not present them as confirmed risks or make investment recommendations."
