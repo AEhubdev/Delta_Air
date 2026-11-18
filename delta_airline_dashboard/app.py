@@ -341,8 +341,18 @@ st.markdown(
         padding: 0.6rem 1.2rem !important;
         box-shadow: 0 3px 10px rgba(0, 30, 96, 0.22) !important;
     }
-    .stButton > button *, .stDownloadButton > button * {
+    div[data-testid="stButton"] button,
+    div[data-testid="stButton"] button *,
+    div[data-testid="stButton"] button[kind],
+    div[data-testid="stButton"] button[kind] *,
+    div[data-testid="stDownloadButton"] button[kind],
+    div[data-testid="stDownloadButton"] button[kind] *,
+    div[data-testid="stLinkButton"] a,
+    div[data-testid="stLinkButton"] a *,
+    div[data-testid="stLinkButton"] a p,
+    div[data-testid="stLinkButton"] a span {
         color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
         background: #001E60 !important;
