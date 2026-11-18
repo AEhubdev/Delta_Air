@@ -225,14 +225,17 @@ st.markdown(
         color: #1A1A1A !important;
     }
 
-    /* Top CGI Gradient Banner */
+    /* Top navy banner */
     .cgi-banner {
-        background: linear-gradient(135deg, #E31937 0%, #9B185A 52%, #5236AB 100%);
+        background: #001E60;
         padding: 24px 30px;
         border-radius: 10px;
         color: #FFFFFF !important;
         margin-bottom: 1.5rem;
-        box-shadow: 0 6px 18px rgba(82, 54, 171, 0.18);
+        box-shadow: 0 6px 18px rgba(0, 30, 96, 0.18);
+    }
+    .cgi-banner, .cgi-banner * {
+        color: #FFFFFF !important;
     }
     .cgi-banner-title {
         font-size: 2.1rem;
@@ -328,20 +331,23 @@ st.markdown(
         border-bottom: 3px solid #E31937 !important;
     }
 
-    /* Primary & Download Buttons with CGI Gradient */
+    /* Primary and download buttons */
     .stButton > button, .stDownloadButton > button {
-        background: linear-gradient(90deg, #E31937 0%, #9B185A 55%, #5236AB 100%) !important;
+        background: #001E60 !important;
         color: #FFFFFF !important;
         border: none !important;
         border-radius: 6px !important;
         font-weight: 600 !important;
         padding: 0.6rem 1.2rem !important;
-        box-shadow: 0 3px 10px rgba(227, 25, 55, 0.22) !important;
+        box-shadow: 0 3px 10px rgba(0, 30, 96, 0.22) !important;
+    }
+    .stButton > button *, .stDownloadButton > button * {
+        color: #FFFFFF !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
-        background: linear-gradient(90deg, #C8142F 0%, #83124B 55%, #41298F 100%) !important;
+        background: #001E60 !important;
         color: #FFFFFF !important;
-        box-shadow: 0 5px 14px rgba(82, 54, 171, 0.30) !important;
+        box-shadow: 0 5px 14px rgba(0, 30, 96, 0.30) !important;
     }
 
     /* Floating AI assistant: keyed Streamlit containers become st-key-* classes. */
@@ -421,8 +427,8 @@ def load_all_data(
 with st.sidebar:
     st.markdown(
         """
-        <div style="background: linear-gradient(90deg, #E31937 0%, #5236AB 100%);
-                    padding: 10px 14px; border-radius: 8px; color: white; font-weight: 700;
+        <div style="background: #001E60;
+                    padding: 10px 14px; border-radius: 8px; color: #FFFFFF !important; font-weight: 700;
                     font-size: 1.15rem; margin-bottom: 12px; letter-spacing: 0.5px;">
             CGI | Advisory Suite
         </div>
@@ -571,7 +577,7 @@ dcf_results = run_dcf_model(
     terminal_growth_rate=tgr,
 )
 
-# CGI Gradient Hero Banner
+# Navy Hero Banner
 st.markdown(
     f"""
     <div class='cgi-banner'>
