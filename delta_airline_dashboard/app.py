@@ -428,7 +428,7 @@ st.markdown(
 )
 
 
-DATA_CACHE_VERSION = "market-cap-and-company-profile-fallback-v2"
+DATA_CACHE_VERSION = "factsheet-profile-and-consensus-v3"
 
 
 @st.cache_data(ttl=3600, show_spinner="Fetching live company and benchmark data...")
@@ -515,13 +515,27 @@ def currency_text(value, suffix=""):
     return f"{currency_symbol}{formatted}{suffix}" if formatted != "Not available" else formatted
 
 
-try:
-    employee_count = int(float(info.get("fullTimeEmployees") or 0))
-    employee_text = f"{employee_count:,}" if employee_count > 0 else "Not reported"
-except (TypeError, ValueError):
-    employee_text = "Not reported"
+company_profile = company_config.get("profile", {})
+live_headquarters = ", ".join(
+    filter(None, [str(info.get("city") or "").strip(), str(info.get("country") or "").strip()])
+)
+headquarters = str(company_profile.get("headquarters") or live_headquarters or "Not reported")
+employee_text = str(company_profile.get("employee_display") or "").strip()
+if not employee_text:
+    try:
+        employee_count = int(float(info.get("fullTimeEmployees") or 0))
+        employee_text = f"{employee_count:,}" if employee_count > 0 else "Not reported"
+    except (TypeError, ValueError):
+        employee_text = "Not reported"
 
-headquarters = ", ".join(filter(None, [str(info.get("city") or "").strip(), str(info.get("country") or "").strip()])) or "Not reported"
+employee_html = html.escape(employee_text)
+employee_source_url = str(company_profile.get("employee_source_url") or "").strip()
+employee_source_label = str(company_profile.get("employee_source_label") or "Company report").strip()
+if employee_source_url:
+    employee_html += (
+        f' <small>(<a href="{html.escape(employee_source_url, quote=True)}" '
+        f'target="_blank" rel="noopener noreferrer">{html.escape(employee_source_label)}</a>)</small>'
+    )
 sector_text = str(info.get("sector") or company_config.get("sector") or "Not reported")
 industry_text = str(info.get("industry") or company_config.get("industry") or "Not reported")
 low_52w = info.get("fiftyTwoWeekLow")
@@ -531,7 +545,9 @@ range_text = (
     if quote_text(low_52w) != "Not available" and quote_text(high_52w) != "Not available"
     else "Not available"
 )
-consensus_text = str(info.get("recommendationKey") or "Not reported").upper()
+consensus_text = str(
+    raw_data.get("analyst_consensus") or info.get("recommendationKey") or "No current analyst consensus"
+).strip().replace("_", " ").upper()
 
 factsheet_html = f"""
 <div class='cgi-card'>
@@ -539,7 +555,7 @@ factsheet_html = f"""
     📊 Client Quick Factsheet
 </h4>
 <b>Headquarters:</b> {html.escape(headquarters)}<br>
-<b>Employees:</b> {html.escape(employee_text)}<br>
+<b>Employees:</b> {employee_html}<br>
 <b>Sector:</b> {html.escape(sector_text)}<br>
 <b>Industry:</b> {html.escape(industry_text)}<br>
 <b>52W Range:</b> {html.escape(range_text)}<br>

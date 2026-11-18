@@ -14,6 +14,12 @@ COMPANIES = {
         "benchmarks": ("^GSPC", "JETS"), "benchmark_names": ("S&P 500", "U.S. Airlines ETF"),
         "risk_profile": "airlines", "exclude_years": ("2021",),
         "sector": "Industrials", "industry": "Airlines",
+        "profile": {
+            "headquarters": "Atlanta, Georgia, United States",
+            "employee_display": "103,000 FTE (FY2025)",
+            "employee_source_label": "Delta 2025 Form 10-K",
+            "employee_source_url": "https://www.sec.gov/Archives/edgar/data/27904/000002790426000013/dal-20251231.htm",
+        },
         "overview": "Delta Air Lines operates a global passenger airline and cargo network, with revenue and costs shaped by travel demand, fuel prices, labor, aircraft investment, and foreign exchange. This profile supports discussion of cash generation, leverage, fleet plans, and financial risk priorities.",
         "fallback_shares": 648_000_000, "shares_as_of": "FY2025 basic weighted-average shares",
         "shares_source": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-December-Quarter-and-Full-Year-2025-Financial-Results/default.aspx",
@@ -23,6 +29,12 @@ COMPANIES = {
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "consumer_apparel", "exclude_years": (),
         "sector": "Consumer Cyclical", "industry": "Apparel and Sporting Goods",
+        "profile": {
+            "headquarters": "Herzogenaurach, Germany",
+            "employee_display": "64,938 (FY2025)",
+            "employee_source_label": "adidas Annual Report 2025",
+            "employee_source_url": "https://www.report.adidas-group.com/2025/en/group-management-report-sustainability-statement/esrs-s1-own-workforce/metrics-and-targets.html",
+        },
         "overview": "adidas designs, develops, and markets footwear, apparel, accessories, and sporting goods under the adidas brand. Its performance is affected by consumer demand, product launches, inventory and discounting, sourcing and logistics, and foreign-exchange movements.",
         "fallback_shares": 178_665_018, "shares_as_of": "2025-12-31 outstanding shares",
         "shares_source": "https://report.adidas-group.com/2025/en/group-management-report-financial-review/business-performance/income-statement.html",
@@ -32,6 +44,12 @@ COMPANIES = {
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "airlines", "exclude_years": (),
         "sector": "Industrials", "industry": "Airlines and Aviation Services",
+        "profile": {
+            "headquarters": "Cologne, Germany",
+            "employee_display": "103,255 (FY2025)",
+            "employee_source_label": "Lufthansa Group Annual Report 2025",
+            "employee_source_url": "https://report.lufthansagroup.com/2025/annual-report/en/combined-management-report/principles-of-the-group/employees/",
+        },
         "overview": "Deutsche Lufthansa AG operates passenger airlines and aviation-related services. Its performance is affected by travel and cargo demand, fuel and labor costs, fleet investment, foreign exchange, and financing needs.",
     },
     "BMW AG (BMW.DE)": {
@@ -39,6 +57,12 @@ COMPANIES = {
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "automotive", "exclude_years": (),
         "sector": "Consumer Cyclical", "industry": "Automobiles",
+        "profile": {
+            "headquarters": "Munich, Germany",
+            "employee_display": "154,540 (FY2025)",
+            "employee_source_label": "BMW Group Report 2025",
+            "employee_source_url": "https://www.bmwgroup.com/en/report/2025/management-report/index.html",
+        },
         "overview": "BMW Group develops and manufactures premium vehicles and mobility services. Its results are shaped by vehicle demand and mix, electrification investment, supply chains, customer financing, and currency movements.",
         "fallback_shares": 591_133_711, "shares_as_of": "2026-09-30 estimated shares outstanding (issued less treasury shares)",
         "shares_source": "https://www.bmwgroup.com/content/dam/grpw/websites/bmwgroup_com/ir/downloads/en/2026/q3/BMW_Q3-2026-EN.pdf",
@@ -48,6 +72,12 @@ COMPANIES = {
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "industrials", "exclude_years": (),
         "sector": "Industrials", "industry": "Industrial Technology",
+        "profile": {
+            "headquarters": "Munich, Germany",
+            "employee_display": "Approx. 318,000 (FY2025)",
+            "employee_source_label": "Siemens Annual Report 2025",
+            "employee_source_url": "https://assets.new.siemens.com/siemens/assets/api/uuid%3A428ea18a-e7ab-4f93-a160-33908f1c3540/Siemens-Annual-Report-2025.pdf",
+        },
         "overview": "Siemens AG provides industrial automation and software, smart infrastructure, mobility systems, and related financial services. Its results are influenced by industrial investment, project execution, order conversion, and foreign exchange.",
         "fallback_shares": 782_000_000, "shares_as_of": "2026-03-03 issued shares",
         "shares_source": "https://www.siemens.com/en-us/company/investor-relations/faq/",
@@ -57,11 +87,88 @@ COMPANIES = {
         "benchmarks": ("^GDAXI", "^GSPC"), "benchmark_names": ("DAX", "S&P 500"),
         "risk_profile": "software", "exclude_years": (),
         "sector": "Technology", "industry": "Enterprise Software",
+        "profile": {
+            "headquarters": "Walldorf, Germany",
+            "employee_display": "111,397 (FY2025 headcount)",
+            "employee_source_label": "SAP Integrated Report 2025",
+            "employee_source_url": "https://www.sap.com/integrated-reports/2025/en/csrd/social-performance.html",
+        },
         "overview": "SAP SE provides enterprise applications and cloud software for finance, procurement, supply chain, human resources, and other business processes. Its performance is affected by recurring cloud adoption, customer demand, implementation delivery, and foreign exchange.",
         "fallback_shares": 1_228_504_232, "shares_as_of": "2025-12-31 shares outstanding",
         "shares_source": "https://www.sap.com/investors/en/stock/basic-data.html",
     },
 }
+
+
+def _analyst_consensus(ticker, info: dict) -> str:
+    """Return Yahoo's current consensus, using recommendation counts if needed."""
+    direct_value = str(info.get("recommendationKey") or "").strip()
+    if direct_value and direct_value.lower() not in {"none", "nan", "n/a", "not reported"}:
+        return direct_value.replace("_", " ").upper()
+
+    summary = None
+    try:
+        getter = getattr(ticker, "get_recommendations_summary", None)
+        if callable(getter):
+            summary = getter()
+        else:
+            summary = getattr(ticker, "recommendations_summary", None)
+    except Exception:
+        summary = None
+
+    if isinstance(summary, pd.DataFrame) and not summary.empty:
+        columns = {str(column).replace("_", "").lower(): column for column in summary.columns}
+        rating_weights = [
+            ("strongbuy", "STRONG BUY", 1.0),
+            ("buy", "BUY", 2.0),
+            ("hold", "HOLD", 3.0),
+            ("sell", "SELL", 4.0),
+            ("strongsell", "STRONG SELL", 5.0),
+        ]
+        rows = list(summary.iterrows())
+        rows.sort(key=lambda item: 0 if str(item[0]).lower() in {"0m", "0mo", "current"} else 1)
+        for period, row in rows:
+            counts = []
+            for column_key, label, weight in rating_weights:
+                column = columns.get(column_key)
+                try:
+                    count = float(row.get(column, 0)) if column is not None else 0.0
+                except (TypeError, ValueError):
+                    count = 0.0
+                if not np.isfinite(count) or count < 0:
+                    count = 0.0
+                counts.append((label, weight, count))
+            total = sum(count for _, _, count in counts)
+            if total <= 0:
+                continue
+            average = sum(weight * count for _, weight, count in counts) / total
+            if average < 1.5:
+                label = "STRONG BUY"
+            elif average < 2.5:
+                label = "BUY"
+            elif average < 3.5:
+                label = "HOLD"
+            elif average < 4.5:
+                label = "SELL"
+            else:
+                label = "STRONG SELL"
+            return f"{label} ({int(total)} analysts, {period})"
+
+    try:
+        mean = float(info.get("recommendationMean"))
+        if np.isfinite(mean) and 1.0 <= mean <= 5.0:
+            if mean < 1.5:
+                return "STRONG BUY"
+            if mean < 2.5:
+                return "BUY"
+            if mean < 3.5:
+                return "HOLD"
+            if mean < 4.5:
+                return "SELL"
+            return "STRONG SELL"
+    except (TypeError, ValueError):
+        pass
+    return "No current analyst consensus"
 
 
 def fetch_company_data(
@@ -388,10 +495,13 @@ def fetch_company_data(
     else:
         shares_source_url = selected_config.get("shares_source", "")
 
+    analyst_consensus = _analyst_consensus(ticker, info)
+
     return {
         "ticker": ticker_symbol,
         "currency": info.get("currency") or currency,
         "info": info,
+        "analyst_consensus": analyst_consensus,
         "fast_info": fast_info,
         "market_cap_basis": market_cap_basis,
         "share_count_basis": share_count_basis,
