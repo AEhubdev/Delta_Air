@@ -350,6 +350,19 @@ st.markdown(
         box-shadow: 0 5px 14px rgba(0, 30, 96, 0.30) !important;
     }
 
+    /* Email draft links */
+    [data-testid="stLinkButton"] a, a[data-testid="stLinkButton"] {
+        background: #001E60 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+    [data-testid="stLinkButton"] a *, a[data-testid="stLinkButton"] * {
+        color: #FFFFFF !important;
+    }
+    [data-testid="stLinkButton"] a:hover, a[data-testid="stLinkButton"]:hover {
+        background: #001E60 !important;
+        color: #FFFFFF !important;
+    }
     /* Floating AI assistant: keyed Streamlit containers become st-key-* classes. */
     .st-key-ai_chat_launcher {
         position: fixed;
