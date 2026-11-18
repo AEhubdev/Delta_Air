@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b6d436e1-4a0c-4f28-a293-f340679044cf" name="Changes" comment="1 test">
-      <change beforePath="$PROJECT_DIR$/delta_airline_dashboard/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/delta_airline_dashboard/app.py" afterDir="false" />
-    </list>
+    <list default="true" id="b6d436e1-4a0c-4f28-a293-f340679044cf" name="Changes" comment="1 test" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -306,7 +304,31 @@
       <option name="project" value="LOCAL" />
       <updated>1795027555782</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="1 test">
+      <option name="closed" value="true" />
+      <created>1795027800770</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1795027800770</updated>
+    </task>
+    <task id="LOCAL-00031" summary="1 test">
+      <option name="closed" value="true" />
+      <created>1795028044969</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1795028044969</updated>
+    </task>
+    <task id="LOCAL-00032" summary="1 test">
+      <option name="closed" value="true" />
+      <created>1795028727368</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1795028727368</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
