@@ -1200,12 +1200,20 @@ with tab3:
         company_news=company_news,
         dcf_assumptions=dcf_assumptions,
         data_timestamp=raw_data.get("fetched_at", "Not available"),
+        business_summary=business_summary,
+        headquarters=headquarters,
+        employee_count=employee_text,
+        range_text=range_text,
+        employee_source_label=employee_source_label,
+        employee_source_url=employee_source_url,
+        sector=sector_text,
+        industry=industry_text,
     )
     custom_client_pdf_bytes = generate_custom_client_pdf_compat(
         data=raw_data,
         company_name=company_label,
-        sector=info.get("sector") or "Not reported",
-        industry=info.get("industry") or "Not reported",
+        sector=sector_text,
+        industry=industry_text,
         fin_df=fin_df,
         multiples=multiples,
         dcf_results=dcf_results,
@@ -1219,6 +1227,12 @@ with tab3:
         currency_code=currency_code,
         data_timestamp=raw_data.get("fetched_at", "Not available"),
         exclude_years=company_config["exclude_years"],
+        business_summary=business_summary,
+        headquarters=headquarters,
+        employee_count=employee_text,
+        range_text=range_text,
+        employee_source_label=employee_source_label,
+        employee_source_url=employee_source_url,
     )
 
     exp_col1, exp_col2 = st.columns(2)

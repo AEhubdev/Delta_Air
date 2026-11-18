@@ -1,4 +1,5 @@
 import io
+import math
 import re
 from datetime import datetime
 from urllib.parse import urlparse
@@ -17,6 +18,45 @@ from reportlab.platypus import (
 )
 
 
+def _report_metric(value, prefix: str = "", suffix: str = "", precision: int = 2) -> str:
+    """Format optional live market metrics consistently with the dashboard."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "Not available"
+    if not math.isfinite(number) or number <= 0:
+        return "Not available"
+    return f"{prefix}{number:,.{precision}f}{suffix}"
+
+
+def _profile_rows(
+    info: dict,
+    multiples: dict,
+    currency_symbol: str,
+    currency_code: str,
+    sector: str,
+    industry: str,
+    headquarters: str,
+    employees: str,
+    range_text: str,
+) -> list[list[str]]:
+    """Create a compact current company and market factsheet for PDF reports."""
+    def value(key, prefix="", suffix="", precision=2):
+        return _report_metric(multiples.get(key), prefix, suffix, precision)
+
+    return [
+        ["Headquarters", headquarters or "Not reported", "Employees", employees or "Not reported"],
+        ["Sector", sector or str(info.get("sector") or "Not reported"), "Industry", industry or str(info.get("industry") or "Not reported")],
+        ["Share price", value("Current Share Price ($)", currency_symbol), "Market capitalization", value("Market Cap ($B)", currency_symbol, "B")],
+        ["Enterprise value", value("Enterprise Value ($B)", currency_symbol, "B"), "Trailing P/E", value("Trailing P/E (x)", suffix="x")],
+        ["Forward P/E", value("Forward P/E (x)", suffix="x"), "EV / EBITDA", value("EV / EBITDA (x)", suffix="x")],
+        ["EV / Revenue", value("EV / Revenue (x)", suffix="x"), "Price / Book", value("Price / Book (x)", suffix="x")],
+        ["Price / FCF", value("Price / FCF (x)", suffix="x"), "FCF yield", value("FCF Yield (%)", suffix="%")],
+        ["Dividend yield", value("Dividend Yield (%)", suffix="%"), "Beta (5Y monthly)", value("Beta (5Y Monthly)")],
+        ["52-week range", range_text or "Not available", "Reporting currency", currency_code],
+    ]
+
+
 def generate_executive_pdf(
     data: dict,
     fin_df,
@@ -33,6 +73,14 @@ def generate_executive_pdf(
     company_news: list[dict] | None = None,
     dcf_assumptions: dict | None = None,
     data_timestamp: str = "Not available",
+    business_summary: str = "",
+    headquarters: str = "Not reported",
+    employee_count: str = "Not reported",
+    range_text: str = "Not available",
+    employee_source_label: str = "",
+    employee_source_url: str = "",
+    sector: str = "",
+    industry: str = "",
 ) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -45,9 +93,9 @@ def generate_executive_pdf(
     )
 
     styles = getSampleStyleSheet()
-    cgi_violet = colors.HexColor("#5236AB")
-    cgi_red = colors.HexColor("#E31937")
-    cgi_magenta = colors.HexColor("#9B185A")
+    cgi_violet = colors.HexColor("#001E60")
+    cgi_red = colors.HexColor("#001E60")
+    cgi_magenta = colors.HexColor("#001E60")
     slate = colors.HexColor("#F7F7FA")
     dark_text = colors.HexColor("#1C1C1C")
     muted_text = colors.HexColor("#555566")
@@ -107,22 +155,37 @@ def generate_executive_pdf(
     elements.append(Paragraph("ADVISORY - CORPORATE RISK MAPPING & HEDGING BRIEFING", subtitle_style))
     elements.append(Paragraph(escape(pdf_text(report_company)), title_style))
     elements.append(Paragraph(
-        f"Sector: {escape(pdf_text(info.get('sector') or 'Not reported'))} | Industry: {escape(pdf_text(info.get('industry') or 'Not reported'))}"
+        f"Sector: {escape(pdf_text(sector or info.get('sector') or 'Not reported'))} | Industry: {escape(pdf_text(industry or info.get('industry') or 'Not reported'))}"
         f"{pdf_text(excluded_note)} | Data updated: {escape(pdf_text(data_timestamp))} | Report generated: {datetime.now().strftime('%d %b %Y, %H:%M')}",
         subtitle_style,
     ))
     elements.append(HRFlowable(width="100%", thickness=2.0, color=cgi_red, spaceAfter=10))
 
-    elements.append(Paragraph("1. Executive Performance & Risk Summary", h2_style))
+    elements.append(Paragraph("1. Company Profile & Current Dashboard Snapshot", h2_style))
+    elements.append(Paragraph(
+        escape(pdf_text(business_summary or "No company overview was available from the selected data sources.")),
+        body_style,
+    ))
+    profile_rows = _profile_rows(
+        info, multiples, currency_symbol, currency_code, sector, industry, headquarters, employee_count, range_text,
+    )
+    add_table([["Company / market measure", "Current value", "Company / market measure", "Current value"], *profile_rows],
+              [42 * mm, 47 * mm, 42 * mm, 47 * mm], font_size=7.8)
+    source_note = "Market and trading metrics: Yahoo Finance data available at export time."
+    if employee_source_label and employee_source_url and urlparse(employee_source_url).scheme in {"http", "https"}:
+        source_note += f" Employee figure: {employee_source_label} ({employee_source_url})."
+    elements.append(Paragraph(escape(pdf_text(source_note)), subtitle_style))
+
+    elements.append(Paragraph("2. Executive Performance & Risk Summary", h2_style))
     elements.append(Paragraph(escape(executive_summary), body_style))
 
-    elements.append(Paragraph("2. AI Financial Analytics Summary", h2_style))
+    elements.append(Paragraph("3. AI Financial Analytics Summary", h2_style))
     append_ai_markdown(
         ai_financial_summary,
         "AI financial analysis was not generated in this session. Generate it from Tab 1 before exporting for the complete AI briefing.",
     )
 
-    elements.append(Paragraph("3. Financial Trend Scorecard", h2_style))
+    elements.append(Paragraph("4. Financial Trend Scorecard", h2_style))
     if not fin_df.empty:
         latest = fin_df.iloc[-1]
         prior = fin_df.iloc[-2] if len(fin_df) > 1 else None
@@ -164,24 +227,24 @@ def generate_executive_pdf(
         add_table(scorecard, [43 * mm, 34 * mm, 34 * mm, 67 * mm], font_size=7.7)
         elements.append(Spacer(1, 7))
 
-    elements.append(Paragraph("4. Market Multiples & DCF Valuation Summary", h2_style))
+    elements.append(Paragraph("5. Market Multiples & DCF Valuation Summary", h2_style))
     bridge = dcf_results["valuation_bridge"]
     wacc_info = dcf_results["wacc_details"]
 
     val_table_data = [
         ["Market & Trading Multiples", "Value", "DCF Valuation Bridge", "Value"],
-        ["Current Share Price", f"{currency_symbol}{multiples['Current Share Price ($)']:.2f}", "Implied Share Price (DCF)", f"{currency_symbol}{bridge['Implied Share Price ($)']:.2f}"],
-        ["Market Capitalization", f"{currency_symbol}{multiples['Market Cap ($B)']:.2f}B", "Implied Upside / Downside", f"{bridge['Implied Upside / Downside (%)']:+.2f}%"],
-        ["Enterprise Value (EV)", f"{currency_symbol}{multiples['Enterprise Value ($B)']:.2f}B", "Implied Enterprise Value", f"{currency_symbol}{bridge['Implied Enterprise Value ($B)']:.2f}B"],
-        ["Trailing / Forward P/E", f"{multiples['Trailing P/E (x)']}x / {multiples['Forward P/E (x)']}x", "Calculated WACC", f"{wacc_info['Calculated WACC (%)']:.2f}%"],
-        ["EV / EBITDA", f"{multiples['EV / EBITDA (x)']}x", "Terminal Growth Rate", f"{wacc_info['Terminal Growth Rate (%)']:.2f}%"],
-        ["FCF Yield / Beta", f"{multiples['FCF Yield (%)']}% / {multiples['Beta (5Y Monthly)']}", f"Net Debt ({currency_code}B)", f"{currency_symbol}{fin_df.iloc[-1]['Net Debt ($B)']:.2f}B"],
+        ["Current Share Price", _report_metric(multiples.get("Current Share Price ($)"), currency_symbol), "Implied Share Price (DCF)", _report_metric(bridge.get("Implied Share Price ($)"), currency_symbol)],
+        ["Market Capitalization", _report_metric(multiples.get("Market Cap ($B)"), currency_symbol, "B"), "Implied Upside / Downside", f"{bridge['Implied Upside / Downside (%)']:+.2f}%"],
+        ["Enterprise Value (EV)", _report_metric(multiples.get("Enterprise Value ($B)"), currency_symbol, "B"), "Implied Enterprise Value", _report_metric(bridge.get("Implied Enterprise Value ($B)"), currency_symbol, "B")],
+        ["Trailing / Forward P/E", f"{_report_metric(multiples.get('Trailing P/E (x)'), suffix='x')} / {_report_metric(multiples.get('Forward P/E (x)'), suffix='x')}", "Calculated WACC", f"{wacc_info['Calculated WACC (%)']:.2f}%"],
+        ["EV / EBITDA", _report_metric(multiples.get("EV / EBITDA (x)"), suffix="x"), "Terminal Growth Rate", f"{wacc_info['Terminal Growth Rate (%)']:.2f}%"],
+        ["FCF Yield / Beta", f"{_report_metric(multiples.get('FCF Yield (%)'), suffix='%')} / {_report_metric(multiples.get('Beta (5Y Monthly)'))}", f"Net Debt ({currency_code}B)", f"{currency_symbol}{fin_df.iloc[-1]['Net Debt ($B)']:.2f}B"],
     ]
 
     add_table(val_table_data, [52 * mm, 36 * mm, 54 * mm, 36 * mm], font_size=8)
     elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph("5. DCF Assumptions & Projection Detail", h2_style))
+    elements.append(Paragraph("6. DCF Assumptions & Projection Detail", h2_style))
     if dcf_assumptions:
         assumption_items = list(dcf_assumptions.items())
         assumption_rows = [["Assumption", "Input", "Assumption", "Input"]]
@@ -218,7 +281,7 @@ def generate_executive_pdf(
         add_table(sensitivity_rows, [first_width] + [remaining_width] * len(sensitivity_df.columns), font_size=7)
         elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph(f"6. Historical Financial Performance ({currency_code} Billions{excluded_note})", h2_style))
+    elements.append(Paragraph(f"7. Historical Financial Performance ({currency_code} Billions{excluded_note})", h2_style))
     if not fin_df.empty:
         hist_headers = [f"Metric ({currency_code}B)"] + list(fin_df["Year"])
         metrics_to_show = [
@@ -249,7 +312,7 @@ def generate_executive_pdf(
         elements.append(hist_table)
         elements.append(Spacer(1, 8))
 
-    elements.append(Paragraph("7. AI Recent Company News Summary", h2_style))
+    elements.append(Paragraph("8. AI Recent Company News Summary", h2_style))
     append_ai_markdown(
         ai_news_summary,
         "No AI news summary was generated in this session. Generate the recent news summary from Tab 1 before exporting for AI news commentary.",
@@ -262,12 +325,12 @@ def generate_executive_pdf(
             published = escape(pdf_text(article.get("published_display") or "Date not provided"))
             url = str(article.get("url") or "")
             if urlparse(url).scheme in {"http", "https"}:
-                title = f"<link href={quoteattr(url)} color=\"#5236AB\">{title}</link>"
+                title = f"<link href={quoteattr(url)} color=\"#001E60\">{title}</link>"
             elements.append(Paragraph(f"• {title} <font color=\"#555566\">- {publisher} | {published}</font>", bullet_style))
     else:
         elements.append(Paragraph("No recent company articles were returned by the news feed.", body_style))
 
-    elements.append(Paragraph("8. Treasury Discussion Points to Validate", h2_style))
+    elements.append(Paragraph("9. Treasury Discussion Points to Validate", h2_style))
     for rec in hedging_recommendations:
         elements.append(Paragraph(f"• <b>{escape(rec['title'])}:</b> {escape(rec['detail'])}", bullet_style))
 
@@ -295,6 +358,13 @@ def generate_custom_client_pdf(
     currency_symbol: str,
     currency_code: str,
     data_timestamp: str,
+    business_summary: str = "",
+    headquarters: str = "Not reported",
+    employee_count: str = "Not reported",
+    range_text: str = "Not available",
+    employee_source_label: str = "",
+    employee_source_url: str = "",
+    exclude_years: tuple[str, ...] = (),
 ) -> bytes:
     """Create a concise, company-specific client meeting report."""
     buffer = io.BytesIO()
@@ -307,9 +377,9 @@ def generate_custom_client_pdf(
         bottomMargin=16 * mm,
     )
     styles = getSampleStyleSheet()
-    violet = colors.HexColor("#5236AB")
-    red = colors.HexColor("#E31937")
-    magenta = colors.HexColor("#9B185A")
+    violet = colors.HexColor("#001E60")
+    red = colors.HexColor("#001E60")
+    magenta = colors.HexColor("#001E60")
     light = colors.HexColor("#F7F7FA")
     text_color = colors.HexColor("#1C1C1C")
     muted = colors.HexColor("#555566")
@@ -398,10 +468,29 @@ def generate_custom_client_pdf(
     elements.append(Paragraph(
         f"{escape(safe_pdf_text(sector or 'Sector not reported'))} | "
         f"{escape(safe_pdf_text(industry or 'Industry not reported'))} | Reporting currency: {escape(currency_code)} | "
-        f"Financial data updated: {escape(safe_pdf_text(data_timestamp))} | Prepared: {datetime.now().strftime('%d %b %Y, %H:%M')}",
+        f"Financial data updated: {escape(safe_pdf_text(data_timestamp))}"
+        f"{(' | Excluded years: ' + ', '.join(escape(safe_pdf_text(year)) for year in exclude_years)) if exclude_years else ''} | "
+        f"Prepared: {datetime.now().strftime('%d %b %Y, %H:%M')}",
         subtitle_style,
     ))
     elements.append(HRFlowable(width="100%", thickness=2, color=red, spaceAfter=6))
+
+    elements.append(Paragraph("Company Profile & Dashboard Snapshot", section_style))
+    elements.append(Paragraph(
+        escape(safe_pdf_text(business_summary or "No company overview was available from the selected data sources.")),
+        body_style,
+    ))
+    info_for_profile = {"sector": sector, "industry": industry}
+    profile_rows = _profile_rows(
+        info_for_profile, multiples, currency_symbol, currency_code, sector, industry,
+        headquarters, employee_count, range_text,
+    )
+    add_table([["Company / market measure", "Current value", "Company / market measure", "Current value"], *profile_rows],
+              [42 * mm, 47 * mm, 42 * mm, 47 * mm], font_size=7.8)
+    source_text = "Market and trading metrics: Yahoo Finance data available at export time."
+    if employee_source_label and employee_source_url and urlparse(employee_source_url).scheme in {"http", "https"}:
+        source_text += f" Employee figure: {employee_source_label} ({employee_source_url})."
+    elements.append(Paragraph(escape(safe_pdf_text(source_text)), subtitle_style))
 
     elements.append(Paragraph("Meeting Brief", section_style))
     elements.append(Paragraph(escape(safe_pdf_text(executive_summary)), body_style))
@@ -428,6 +517,23 @@ def generate_custom_client_pdf(
     else:
         elements.append(Paragraph("No usable financial summary was available for this report.", body_style))
 
+    if fin_df is not None and not fin_df.empty:
+        elements.append(Paragraph("Historical Financial Performance", section_style))
+        history_metrics = [
+            (f"Revenue ({currency_code}B)", "Revenue ($B)"),
+            (f"EBITDA ({currency_code}B)", "EBITDA ($B)"),
+            (f"EBITDA margin (%)", "EBITDA Margin (%)"),
+            (f"Free cash flow ({currency_code}B)", "Free Cash Flow ($B)"),
+            (f"Net debt ({currency_code}B)", "Net Debt ($B)"),
+            ("Net debt / EBITDA (x)", "Net Debt / EBITDA (x)"),
+        ]
+        history_rows = [["Metric", *[str(year) for year in fin_df["Year"]]]]
+        for label, column in history_metrics:
+            if column in fin_df.columns:
+                history_rows.append([label, *[f"{float(value):.2f}" for value in fin_df[column]]])
+        year_count = max(1, len(fin_df))
+        add_table(history_rows, [48 * mm] + [130 * mm / year_count] * year_count, font_size=7.5)
+
     elements.append(Paragraph("AI Financial Analysis", section_style))
     add_markdown(
         ai_financial_summary,
@@ -439,15 +545,42 @@ def generate_custom_client_pdf(
     elements.append(Paragraph("Valuation Scenario", section_style))
     valuation_rows = [
         ["Market measure", "Current", "DCF scenario"],
-        ["Share value", f"{currency_symbol}{multiples['Current Share Price ($)']:.2f}", f"{currency_symbol}{bridge['Implied Share Price ($)']:.2f}"],
-        ["Enterprise value", f"{currency_symbol}{multiples['Enterprise Value ($B)']:.2f}B", f"{currency_symbol}{bridge['Implied Enterprise Value ($B)']:.2f}B"],
+        ["Share value", _report_metric(multiples.get("Current Share Price ($)"), currency_symbol), _report_metric(bridge.get("Implied Share Price ($)"), currency_symbol)],
+        ["Market capitalization", _report_metric(multiples.get("Market Cap ($B)"), currency_symbol, "B"), "—"],
+        ["Enterprise value", _report_metric(multiples.get("Enterprise Value ($B)"), currency_symbol, "B"), _report_metric(bridge.get("Implied Enterprise Value ($B)"), currency_symbol, "B")],
         ["Scenario change", "-", f"{bridge['Implied Upside / Downside (%)']:+.1f}%"],
-        ["EV / EBITDA", f"{multiples['EV / EBITDA (x)']}x", f"WACC {wacc['Calculated WACC (%)']:.2f}%"],
+        ["Trailing / forward P/E", f"{_report_metric(multiples.get('Trailing P/E (x)'), suffix='x')} / {_report_metric(multiples.get('Forward P/E (x)'), suffix='x')}", "—"],
+        ["EV / EBITDA", _report_metric(multiples.get("EV / EBITDA (x)"), suffix="x"), f"WACC {wacc['Calculated WACC (%)']:.2f}%"],
     ]
     add_table(valuation_rows, [55 * mm, 55 * mm, 68 * mm], font_size=8)
     assumption_text = " | ".join(f"{name}: {value}" for name, value in dcf_assumptions.items())
     elements.append(Paragraph(f"Scenario assumptions: {escape(safe_pdf_text(assumption_text))}", subtitle_style))
     elements.append(Paragraph("DCF outputs are assumption-driven scenarios, not forecasts or investment recommendations.", subtitle_style))
+
+    projections = dcf_results.get("projections")
+    if projections is not None and not projections.empty:
+        elements.append(Paragraph("Five-Year DCF Projection", section_style))
+        projection_rows = [["Year", f"Revenue ({currency_code}B)", f"Unlevered FCF ({currency_code}B)", f"PV of FCF ({currency_code}B)"]]
+        for _, projection in projections.iterrows():
+            projection_rows.append([
+                str(projection["Year"]),
+                f"{float(projection['Revenue ($B)']):.2f}",
+                f"{float(projection['Unlevered FCF ($B)']):.2f}",
+                f"{float(projection['PV of FCF ($B)']):.2f}",
+            ])
+        add_table(projection_rows, [25 * mm, 51 * mm, 51 * mm, 51 * mm], font_size=7.8)
+    sensitivity = dcf_results.get("sensitivity")
+    if sensitivity is not None and not sensitivity.empty:
+        elements.append(Paragraph("DCF Sensitivity (WACC / terminal growth)", section_style))
+        sensitivity_rows = [["WACC / TGR", *[str(column) for column in sensitivity.columns]]]
+        for row_index, row in sensitivity.iterrows():
+            sensitivity_rows.append([
+                str(row_index),
+                *["Not available" if value != value else f"{currency_symbol}{float(value):.2f}" for value in row],
+            ])
+        first_width = 34 * mm
+        remaining_width = (178 * mm - first_width) / (len(sensitivity.columns) or 1)
+        add_table(sensitivity_rows, [first_width] + [remaining_width] * len(sensitivity.columns), font_size=7)
 
     elements.append(Paragraph("Recent News and AI Synthesis", section_style))
     add_markdown(
@@ -462,7 +595,7 @@ def generate_custom_client_pdf(
             published = escape(safe_pdf_text(article.get("published_display") or "Date not provided"))
             url = str(article.get("url") or "")
             if urlparse(url).scheme in {"http", "https"}:
-                title = f"<link href={quoteattr(url)} color=\"#5236AB\">{title}</link>"
+                title = f"<link href={quoteattr(url)} color=\"#001E60\">{title}</link>"
             elements.append(Paragraph(f"• {title} <font color=\"#555566\">- {publisher} | {published}</font>", bullet_style))
     else:
         elements.append(Paragraph("No recent company news was returned by the news feed.", body_style))
