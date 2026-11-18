@@ -254,7 +254,7 @@ st.markdown(
     .cgi-card {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0;
-        border-top: 4px solid #E31937;
+        border-top: 4px solid #001E60;
         padding: 18px;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
@@ -269,7 +269,7 @@ st.markdown(
     div[data-testid="stMetric"] {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-left: 4px solid #E31937 !important;
+        border-left: 4px solid #001E60 !important;
         padding: 12px 14px;
         border-radius: 8px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.03);
@@ -296,7 +296,7 @@ st.markdown(
         box-shadow: 0 2px 6px rgba(0,0,0,0.02);
     }
     .clean-table th {
-        background-color: #5236AB !important;
+        background-color: #001E60 !important;
         color: #FFFFFF !important;
         padding: 10px 14px;
         text-align: left;
@@ -327,8 +327,8 @@ st.markdown(
         color: #4A5568 !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
-        color: #E31937 !important;
-        border-bottom: 3px solid #E31937 !important;
+        color: #001E60 !important;
+        border-bottom: 3px solid #001E60 !important;
     }
 
     /* Primary and download buttons */
@@ -372,7 +372,7 @@ st.markdown(
         overflow-y: auto;
         background: #FFFFFF;
         border: 1px solid #D8D4E5;
-        border-top: 4px solid #E31937;
+        border-top: 4px solid #001E60;
         border-radius: 14px;
         padding: 0.8rem 1rem 1rem;
         box-shadow: 0 12px 36px rgba(23, 17, 43, 0.24);
@@ -831,7 +831,7 @@ with tab1:
         fig_bench = px.line(
             norm_bench,
             labels={"value": "Normalized Return (Base = 100)", "Date": "Date", "variable": "Ticker"},
-            color_discrete_map={ticker_symbol: "#E31937", **dict(zip(company_config["benchmarks"], ["#5236AB", "#9B185A"]))},
+            color_discrete_map={ticker_symbol: "#001E60", **dict(zip(company_config["benchmarks"], ["#5236AB", "#9B185A"]))},
         )
         fig_bench.update_layout(
             height=360,
@@ -852,7 +852,7 @@ with tab1:
             fig_rev = go.Figure()
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Revenue ($B)"], name=f"Revenue ({currency_code}B)", marker_color="#5236AB"))
             fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["EBITDA ($B)"], name=f"EBITDA ({currency_code}B)", marker_color="#9B185A"))
-            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name=f"Free Cash Flow ({currency_code}B)", marker_color="#E31937"))
+            fig_rev.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Free Cash Flow ($B)"], name=f"Free Cash Flow ({currency_code}B)", marker_color="#001E60"))
             fig_rev.update_layout(
                 title=f"Revenue, EBITDA & Free Cash Flow ({currency_code}B)",
                 barmode="group",
@@ -866,7 +866,7 @@ with tab1:
 
         with c_fin2:
             fig_debt = go.Figure()
-            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name=f"Total Debt ({currency_code}B)", marker_color="#E31937"))
+            fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Total Debt ($B)"], name=f"Total Debt ({currency_code}B)", marker_color="#001E60"))
             fig_debt.add_trace(go.Bar(x=fin_df["Year"], y=fin_df["Cash & Equivalents ($B)"], name=f"Cash ({currency_code}B)", marker_color="#5236AB"))
             fig_debt.add_trace(
                 go.Scatter(
@@ -1044,7 +1044,7 @@ with tab3:
             y=[f"Unlevered FCF ({currency_code}B)", f"PV of FCF ({currency_code}B)"],
             barmode="group",
             title=f"Projected FCFF vs. Present Value ({currency_code}B)",
-            color_discrete_sequence=["#5236AB", "#E31937"],
+            color_discrete_sequence=["#5236AB", "#001E60"],
         )
         fig_fcf.update_layout(
             height=270,
