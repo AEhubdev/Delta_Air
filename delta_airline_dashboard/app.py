@@ -413,6 +413,19 @@ st.markdown(
         border-radius: 8px;
         padding: 0.45rem 0.65rem;
     }
+    .stApp .st-key-ai_chat_panel .st-key-close_ai_chat button,
+    .stApp .st-key-ai_chat_panel .st-key-close_ai_chat button * {
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+    }
+    .stApp .st-key-ai_chat_panel .st-key-close_ai_chat button {
+        background: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        box-shadow: none !important;
+    }
+    .stApp .st-key-ai_chat_panel .st-key-close_ai_chat button:hover {
+        background: #F1F5F9 !important;
+    }
     @media (max-width: 540px) {
         .st-key-ai_chat_launcher { right: 0.65rem; bottom: 0.65rem; }
         .st-key-ai_chat_panel {
