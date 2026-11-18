@@ -430,6 +430,49 @@ st.markdown(
 
 DATA_CACHE_VERSION = "factsheet-profile-and-consensus-v3"
 
+# Keep a presentation-safe fallback in the app itself as well as data_engine.
+# Streamlit can rerun this script while retaining a previously imported local
+# module; this prevents the Client Quick Factsheet from losing static company
+# profile data during that transition.
+FACTSHEET_PROFILE_FALLBACKS = {
+    "DAL": {
+        "headquarters": "Atlanta, Georgia, United States",
+        "employee_display": "103,000 FTE (FY2025)",
+        "employee_source_label": "Delta 2025 Form 10-K",
+        "employee_source_url": "https://www.sec.gov/Archives/edgar/data/27904/000002790426000013/dal-20251231.htm",
+    },
+    "ADS.DE": {
+        "headquarters": "Herzogenaurach, Germany",
+        "employee_display": "64,938 (FY2025)",
+        "employee_source_label": "adidas Annual Report 2025",
+        "employee_source_url": "https://www.report.adidas-group.com/2025/en/group-management-report-sustainability-statement/esrs-s1-own-workforce/metrics-and-targets.html",
+    },
+    "LHA.DE": {
+        "headquarters": "Cologne, Germany",
+        "employee_display": "103,255 (FY2025)",
+        "employee_source_label": "Lufthansa Group Annual Report 2025",
+        "employee_source_url": "https://report.lufthansagroup.com/2025/annual-report/en/combined-management-report/principles-of-the-group/employees/",
+    },
+    "BMW.DE": {
+        "headquarters": "Munich, Germany",
+        "employee_display": "154,540 (FY2025)",
+        "employee_source_label": "BMW Group Report 2025",
+        "employee_source_url": "https://www.bmwgroup.com/en/report/2025/management-report/index.html",
+    },
+    "SIE.DE": {
+        "headquarters": "Munich, Germany",
+        "employee_display": "Approx. 318,000 (FY2025)",
+        "employee_source_label": "Siemens Annual Report 2025",
+        "employee_source_url": "https://assets.new.siemens.com/siemens/assets/api/uuid%3A428ea18a-e7ab-4f93-a160-33908f1c3540/Siemens-Annual-Report-2025.pdf",
+    },
+    "SAP.DE": {
+        "headquarters": "Walldorf, Germany",
+        "employee_display": "111,397 (FY2025 headcount)",
+        "employee_source_label": "SAP Integrated Report 2025",
+        "employee_source_url": "https://www.sap.com/integrated-reports/2025/en/csrd/social-performance.html",
+    },
+}
+
 
 @st.cache_data(ttl=3600, show_spinner="Fetching live company and benchmark data...")
 def load_all_data(
@@ -515,7 +558,7 @@ def currency_text(value, suffix=""):
     return f"{currency_symbol}{formatted}{suffix}" if formatted != "Not available" else formatted
 
 
-company_profile = company_config.get("profile", {})
+company_profile = company_config.get("profile") or FACTSHEET_PROFILE_FALLBACKS.get(ticker_symbol, {})
 live_headquarters = ", ".join(
     filter(None, [str(info.get("city") or "").strip(), str(info.get("country") or "").strip()])
 )
@@ -545,9 +588,13 @@ range_text = (
     if quote_text(low_52w) != "Not available" and quote_text(high_52w) != "Not available"
     else "Not available"
 )
-consensus_text = str(
-    raw_data.get("analyst_consensus") or info.get("recommendationKey") or "No current analyst consensus"
-).strip().replace("_", " ").upper()
+consensus_value = str(
+    raw_data.get("analyst_consensus") or info.get("recommendationKey") or ""
+).strip().replace("_", " ")
+if consensus_value.lower() in {"", "none", "nan", "n/a", "not reported", "not_reported"}:
+    consensus_text = "No current analyst consensus"
+else:
+    consensus_text = consensus_value.upper()
 
 factsheet_html = f"""
 <div class='cgi-card'>
