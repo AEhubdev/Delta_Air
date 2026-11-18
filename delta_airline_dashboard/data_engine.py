@@ -100,75 +100,65 @@ COMPANIES = {
 }
 
 
-def _analyst_consensus(ticker, info: dict) -> str:
-    """Return Yahoo's current consensus, using recommendation counts if needed."""
-    direct_value = str(info.get("recommendationKey") or "").strip()
-    if direct_value and direct_value.lower() not in {"none", "nan", "n/a", "not reported"}:
-        return direct_value.replace("_", " ").upper()
+def _current_valuation_measure(measures: pd.DataFrame, measure_name: str) -> float:
+    """Read a current measure from yfinance's valuation-timeseries table."""
+    if not isinstance(measures, pd.DataFrame) or measures.empty:
+        return 0.0
 
-    summary = None
+    wanted = _normalized_label(measure_name)
+    matched_index = next(
+        (index for index in measures.index if _normalized_label(index) == wanted),
+        None,
+    )
+    if matched_index is None:
+        return 0.0
+
+    row = measures.loc[matched_index]
+    if isinstance(row, pd.DataFrame):
+        row = row.iloc[0]
+    current_column = next(
+        (column for column in measures.columns if _normalized_label(column) == "current"),
+        None,
+    )
+    candidates = [row.get(current_column)] if current_column is not None else []
+    if not candidates:
+        candidates = list(row.values)
+    for candidate in candidates:
+        try:
+            value = float(candidate)
+            if np.isfinite(value) and value > 0:
+                return value
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
+def _next_year_eps_estimate(estimates: pd.DataFrame, currency: str = "") -> float:
+    """Read Yahoo's +1y average analyst EPS estimate in the quote currency."""
+    if not isinstance(estimates, pd.DataFrame) or estimates.empty:
+        return 0.0
+
+    year_row = next(
+        (index for index in estimates.index if _normalized_label(index) in {"1y", "1yr", "nextyear"}),
+        None,
+    )
+    if year_row is None:
+        return 0.0
+
+    row = estimates.loc[year_row]
+    if isinstance(row, pd.DataFrame):
+        row = row.iloc[0]
     try:
-        getter = getattr(ticker, "get_recommendations_summary", None)
-        if callable(getter):
-            summary = getter()
-        else:
-            summary = getattr(ticker, "recommendations_summary", None)
-    except Exception:
-        summary = None
-
-    if isinstance(summary, pd.DataFrame) and not summary.empty:
-        columns = {str(column).replace("_", "").lower(): column for column in summary.columns}
-        rating_weights = [
-            ("strongbuy", "STRONG BUY", 1.0),
-            ("buy", "BUY", 2.0),
-            ("hold", "HOLD", 3.0),
-            ("sell", "SELL", 4.0),
-            ("strongsell", "STRONG SELL", 5.0),
-        ]
-        rows = list(summary.iterrows())
-        rows.sort(key=lambda item: 0 if str(item[0]).lower() in {"0m", "0mo", "current"} else 1)
-        for period, row in rows:
-            counts = []
-            for column_key, label, weight in rating_weights:
-                column = columns.get(column_key)
-                try:
-                    count = float(row.get(column, 0)) if column is not None else 0.0
-                except (TypeError, ValueError):
-                    count = 0.0
-                if not np.isfinite(count) or count < 0:
-                    count = 0.0
-                counts.append((label, weight, count))
-            total = sum(count for _, _, count in counts)
-            if total <= 0:
-                continue
-            average = sum(weight * count for _, weight, count in counts) / total
-            if average < 1.5:
-                label = "STRONG BUY"
-            elif average < 2.5:
-                label = "BUY"
-            elif average < 3.5:
-                label = "HOLD"
-            elif average < 4.5:
-                label = "SELL"
-            else:
-                label = "STRONG SELL"
-            return f"{label} ({int(total)} analysts, {period})"
-
-    try:
-        mean = float(info.get("recommendationMean"))
-        if np.isfinite(mean) and 1.0 <= mean <= 5.0:
-            if mean < 1.5:
-                return "STRONG BUY"
-            if mean < 2.5:
-                return "BUY"
-            if mean < 3.5:
-                return "HOLD"
-            if mean < 4.5:
-                return "SELL"
-            return "STRONG SELL"
+        currency_value = row.get("currency")
+        estimate_currency = "" if pd.isna(currency_value) else str(currency_value).strip().upper()
+        quote_currency = str(currency or "").strip().upper()
+        if estimate_currency and quote_currency and estimate_currency != quote_currency:
+            return 0.0
+        average_value = row.get("avg")
+        estimate = float(average_value) if not pd.isna(average_value) else 0.0
+        return estimate if np.isfinite(estimate) and estimate > 0 else 0.0
     except (TypeError, ValueError):
-        pass
-    return "No current analyst consensus"
+        return 0.0
 
 
 def fetch_company_data(
@@ -187,6 +177,42 @@ def fetch_company_data(
         warnings.append(f"Quote profile unavailable ({type(exc).__name__}).")
     if not info:
         warnings.append("Yahoo Finance returned no quote profile for this ticker.")
+
+    # Yahoo's quote-summary `info` omits forwardPE for some listings even
+    # though the Key Statistics page has a current Forward P/E. Prefer the
+    # same valuation-measures time series used by that page.
+    valuation_measures = pd.DataFrame()
+    earnings_estimate = pd.DataFrame()
+    if _safe_info_number(info, "forwardPE") <= 0:
+        valuation_getter = getattr(ticker, "get_valuation_measures", None)
+        if callable(valuation_getter):
+            try:
+                valuation_measures = valuation_getter(freq="quarterly", periods=0)
+            except TypeError:
+                try:
+                    valuation_measures = valuation_getter()
+                except Exception:
+                    valuation_measures = pd.DataFrame()
+            except Exception:
+                valuation_measures = pd.DataFrame()
+        else:
+            try:
+                valuation_measures = getattr(ticker, "valuation_measures", pd.DataFrame())
+            except Exception:
+                valuation_measures = pd.DataFrame()
+
+        if _current_valuation_measure(valuation_measures, "Forward P/E") <= 0:
+            estimate_getter = getattr(ticker, "get_earnings_estimate", None)
+            if callable(estimate_getter):
+                try:
+                    earnings_estimate = estimate_getter()
+                except Exception:
+                    earnings_estimate = pd.DataFrame()
+            else:
+                try:
+                    earnings_estimate = getattr(ticker, "earnings_estimate", pd.DataFrame())
+                except Exception:
+                    earnings_estimate = pd.DataFrame()
 
     # fast_info is often available even when Yahoo's full quote profile is
     # incomplete. Read each field independently because yfinance properties
@@ -495,14 +521,13 @@ def fetch_company_data(
     else:
         shares_source_url = selected_config.get("shares_source", "")
 
-    analyst_consensus = _analyst_consensus(ticker, info)
-
     return {
         "ticker": ticker_symbol,
         "currency": info.get("currency") or currency,
         "info": info,
-        "analyst_consensus": analyst_consensus,
         "fast_info": fast_info,
+        "valuation_measures": valuation_measures,
+        "earnings_estimate": earnings_estimate,
         "market_cap_basis": market_cap_basis,
         "share_count_basis": share_count_basis,
         "shares_source_url": shares_source_url,
@@ -798,12 +823,23 @@ def extract_valuation_multiples(data: dict, fin_df: pd.DataFrame) -> dict:
     if dividend_yield <= 0 and price > 0:
         dividend_yield = _safe_info_number(info, "dividendRate") / price
 
+    forward_pe = _safe_info_number(info, "forwardPE")
+    if forward_pe <= 0:
+        forward_pe = _current_valuation_measure(data.get("valuation_measures"), "Forward P/E")
+    if forward_pe <= 0:
+        next_year_eps = _next_year_eps_estimate(
+            data.get("earnings_estimate"),
+            info.get("currency") or data.get("currency", ""),
+        )
+        if price > 0 and next_year_eps > 0:
+            forward_pe = price / next_year_eps
+
     return {
         "Current Share Price ($)": round(price, 2),
         "Market Cap ($B)": round(mkt_cap / 1e9, 2),
         "Enterprise Value ($B)": round(ev / 1e9, 2),
         "Trailing P/E (x)": round(trailing_pe, 2),
-        "Forward P/E (x)": round(_safe_info_number(info, "forwardPE"), 2),
+        "Forward P/E (x)": round(forward_pe, 2),
         "EV / EBITDA (x)": round(_safe_info_number(info, "enterpriseToEbitda") or (ev / latest_ebitda if latest_ebitda > 0 else 0.0), 2),
         "EV / Revenue (x)": round(_safe_info_number(info, "enterpriseToRevenue") or (ev / latest_rev if latest_rev > 0 else 0.0), 2),
         "Price / Book (x)": round(price_to_book, 2),

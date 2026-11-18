@@ -224,6 +224,11 @@ st.markdown(
     section[data-testid="stSidebar"] .stMarkdown {
         color: #1A1A1A !important;
     }
+    section[data-testid="stSidebar"] .cgi-sidebar-brand,
+    section[data-testid="stSidebar"] .cgi-sidebar-brand * {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+    }
 
     /* Top navy banner */
     .cgi-banner {
@@ -282,7 +287,6 @@ st.markdown(
         color: #1A1A1A !important;
         font-weight: 700 !important;
     }
-
     /* CLEAN WHITE TABLES STYLING (Guarantees white background and dark text) */
     .clean-table {
         width: 100%;
@@ -428,7 +432,7 @@ st.markdown(
 )
 
 
-DATA_CACHE_VERSION = "factsheet-profile-and-consensus-v3"
+DATA_CACHE_VERSION = "forward-pe-yahoo-valuation-fallback-v5"
 
 # Keep a presentation-safe fallback in the app itself as well as data_engine.
 # Streamlit can rerun this script while retaining a previously imported local
@@ -493,10 +497,10 @@ def load_all_data(
 with st.sidebar:
     st.markdown(
         """
-        <div style="background: #001E60;
-                    padding: 10px 14px; border-radius: 8px; color: #FFFFFF !important; font-weight: 700;
+        <div class="cgi-sidebar-brand" style="background: #001E60;
+                    padding: 10px 14px; border-radius: 8px; font-weight: 700;
                     font-size: 1.15rem; margin-bottom: 12px; letter-spacing: 0.5px;">
-            CGI | Advisory Suite
+            <span>CGI | Advisory Suite</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -588,14 +592,6 @@ range_text = (
     if quote_text(low_52w) != "Not available" and quote_text(high_52w) != "Not available"
     else "Not available"
 )
-consensus_value = str(
-    raw_data.get("analyst_consensus") or info.get("recommendationKey") or ""
-).strip().replace("_", " ")
-if consensus_value.lower() in {"", "none", "nan", "n/a", "not reported", "not_reported"}:
-    consensus_text = "No current analyst consensus"
-else:
-    consensus_text = consensus_value.upper()
-
 factsheet_html = f"""
 <div class='cgi-card'>
 <h4 style="margin-top: 0; color: #5236AB; font-size: 1.05rem; border-bottom: 1px solid #ECE8F4; padding-bottom: 6px;">
@@ -605,8 +601,7 @@ factsheet_html = f"""
 <b>Employees:</b> {employee_html}<br>
 <b>Sector:</b> {html.escape(sector_text)}<br>
 <b>Industry:</b> {html.escape(industry_text)}<br>
-<b>52W Range:</b> {html.escape(range_text)}<br>
-<b>Consensus:</b> {html.escape(consensus_text)}
+<b>52W Range:</b> {html.escape(range_text)}
 </div>
 """
 
@@ -682,7 +677,10 @@ k1.metric("Share Price", currency_text(multiples["Current Share Price ($)"]))
 k2.metric("Market Cap", currency_text(multiples["Market Cap ($B)"], "B"))
 k3.metric("Enterprise Value", currency_text(multiples["Enterprise Value ($B)"], "B"))
 k4.metric("EV / EBITDA", f"{quote_text(multiples['EV / EBITDA (x)'], 'x')}")
-k5.metric("Trailing / Fwd P/E", f"{quote_text(multiples['Trailing P/E (x)'], 'x')} / {quote_text(multiples['Forward P/E (x)'], 'x')}")
+k5.metric(
+    "Trailing / Fwd P/E",
+    f"{quote_text(multiples['Trailing P/E (x)'], 'x')} / {quote_text(multiples['Forward P/E (x)'], 'x')}",
+)
 k6.metric(
     "DCF Implied Price",
     currency_text(dcf_results["valuation_bridge"]["Implied Share Price ($)"]),
